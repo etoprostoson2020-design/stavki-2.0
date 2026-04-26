@@ -76,6 +76,7 @@ export default function Home() {
           matchDate,
           homeTeam: match.home_team,
           awayTeam: match.away_team,
+          matchBookmakers: match.bookmakers || [],
         }),
       });
 
@@ -96,12 +97,15 @@ export default function Home() {
         buffer = lines.pop();
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
+          let event;
           try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === "text") setAnalysis((p) => p + event.content);
-            else if (event.type === "done") setAnalysisId(event.id);
-            else if (event.type === "error") throw new Error(event.message);
-          } catch { /* skip */ }
+            event = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+          if (event.type === "text") setAnalysis((p) => p + event.content);
+          else if (event.type === "done") setAnalysisId(event.id);
+          else if (event.type === "error") throw new Error(event.message);
         }
       }
     } catch (err) {
