@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Sports Betting Analyst Prompt",
-  description: "A structured AI prompt that turns Claude into a professional sports betting analyst with live web search and value calculation.",
+  title: "Sports Betting Analyst",
+  description: "AI-powered sports betting analysis with live odds and web search.",
 };
 
 export default function RootLayout({ children }) {
