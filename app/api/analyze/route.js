@@ -23,7 +23,7 @@ export async function POST(request) {
 
   const homeText = homeNews.status === "fulfilled" ? homeNews.value : null;
   const awayText = awayNews.status === "fulfilled" ? awayNews.value : null;
-  const oddsText = formatBookmakers(matchBookmakers, homeTeam, awayTeam);
+  const oddsText = formatAllOdds(matchBookmakers, homeTeam, awayTeam);
 
   const userMessage = buildUserMessage({ league, matchDate, homeTeam, awayTeam, oddsText, homeText, awayText });
 
@@ -33,18 +33,23 @@ export async function POST(request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const anthropicStream = client.messages.stream({
+        // Используем stream:true — наиболее стабильный метод
+        const response = await client.messages.create({
           model: "claude-sonnet-4-6",
           max_tokens: 4096,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
+          stream: true,
         });
 
-        for await (const text of anthropicStream.textStream) {
-          fullText += text;
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "text", content: text })}\n\n`)
-          );
+        for await (const chunk of response) {
+          if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+            const text = chunk.delta.text;
+            fullText += text;
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "text", content: text })}\n\n`)
+            );
+          }
         }
 
         const saved = await prisma.analysis.create({
@@ -80,25 +85,46 @@ export async function POST(request) {
   });
 }
 
-function formatBookmakers(bookmakers, homeTeam, awayTeam) {
-  if (!bookmakers || !bookmakers.length) return null;
+// Форматируем ВСЕ рынки от ВСЕХ букмекеров
+function formatAllOdds(bookmakers, homeTeam, awayTeam) {
+  if (!bookmakers?.length) return null;
 
-  const lines = [];
-  for (const bm of bookmakers.slice(0, 5)) {
+  const lines = [`Всего букмекеров: ${bookmakers.length}\n`];
+
+  for (const bm of bookmakers) {
     lines.push(`\n### ${bm.title}`);
     for (const market of bm.markets) {
-      const label = { h2h: "Исход (1X2)", totals: "Тотал", btts: "Обе забьют" }[market.key] || market.key;
-      lines.push(`**${label}:**`);
+      const marketName = {
+        h2h: "Исход матча (1X2)",
+        totals: "Тотал голов",
+        btts: "Обе команды забьют",
+        spreads: "Азиатский гандикап",
+      }[market.key] || market.key;
+
+      lines.push(`**${marketName}:**`);
+
       for (const o of market.outcomes) {
-        const name = o.name === homeTeam ? `П1 (${homeTeam})` :
-                     o.name === awayTeam ? `П2 (${awayTeam})` :
-                     o.name === "Draw" ? "Ничья" :
-                     o.name === "Over" ? `ТБ ${o.point}` :
-                     o.name === "Under" ? `ТМ ${o.point}` : o.name;
-        lines.push(`  ${name}: **${o.price}**`);
+        let name = o.name;
+        if (market.key === "h2h") {
+          name = o.name === homeTeam ? `П1 — ${homeTeam}` :
+                 o.name === awayTeam ? `П2 — ${awayTeam}` :
+                 o.name === "Draw" ? "Ничья" : o.name;
+        } else if (market.key === "totals") {
+          name = o.name === "Over" ? `ТБ ${o.point}` :
+                 o.name === "Under" ? `ТМ ${o.point}` : o.name;
+        } else if (market.key === "btts") {
+          name = o.name === "Yes" ? "Да (обе забьют)" :
+                 o.name === "No" ? "Нет" : o.name;
+        } else if (market.key === "spreads" && o.point !== undefined) {
+          name = `${o.name} (${o.point > 0 ? "+" : ""}${o.point})`;
+        }
+        // Неявная вероятность = 1 / коэф
+        const impliedProb = ((1 / o.price) * 100).toFixed(1);
+        lines.push(`  ${name}: **${o.price}** (вероятность по рынку: ${impliedProb}%)`);
       }
     }
   }
+
   return lines.join("\n");
 }
 
@@ -110,16 +136,16 @@ function buildUserMessage({ league, matchDate, homeTeam, awayTeam, oddsText, hom
   ];
 
   if (oddsText) {
-    parts.push(`\n## 📊 Коэффициенты букмекеров (актуальные)\n${oddsText}`);
+    parts.push(`\n## 📊 ВСЕ КОЭФФИЦИЕНТЫ БУКМЕКЕРОВ\n${oddsText}`);
   } else {
     parts.push("\n## 📊 Коэффициенты\nДанные букмекеров недоступны — используй исторические средние.");
   }
 
   if (homeText) {
-    parts.push(`\n## 🔍 Новости и форма: ${homeTeam}\n${homeText}`);
+    parts.push(`\n## 🔍 Форма и новости: ${homeTeam}\n${homeText}`);
   }
   if (awayText) {
-    parts.push(`\n## 🔍 Новости и форма: ${awayTeam}\n${awayText}`);
+    parts.push(`\n## 🔍 Форма и новости: ${awayTeam}\n${awayText}`);
   }
   if (!homeText && !awayText) {
     parts.push("\n## 🔍 Веб-поиск\nTavily API не настроен — анализируй на основе коэффициентов и своих знаний.");
