@@ -1,13 +1,22 @@
 "use client";
 
-export default function MatchesList({ matches, onAnalyze, analyzingId }) {
+import { useRouter } from "next/navigation";
+
+export default function MatchesList({ matches, leagueLabel }) {
+  const router = useRouter();
+
   if (!matches.length) return null;
+
+  const handleAnalyze = (match) => {
+    sessionStorage.setItem("pendingMatch", JSON.stringify(match));
+    sessionStorage.setItem("pendingLeague", leagueLabel);
+    router.push("/analysis");
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
       {matches.map((match) => {
         const date = new Date(match.commence_time);
-        const isAnalyzing = analyzingId === match.id;
         const h2h = match.bookmakers?.[0]?.markets?.find((m) => m.key === "h2h");
         const outcomes = h2h?.outcomes || [];
         const homeOdds = outcomes.find((o) => o.name === match.home_team)?.price;
@@ -47,17 +56,10 @@ export default function MatchesList({ matches, onAnalyze, analyzingId }) {
                   { label: "П2", value: awayOdds },
                 ].map(({ label, value }) =>
                   value ? (
-                    <div
-                      key={label}
-                      style={{
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        padding: "6px 10px",
-                        textAlign: "center",
-                        minWidth: "44px",
-                      }}
-                    >
+                    <div key={label} style={{
+                      background: "#f8fafc", border: "1px solid #e2e8f0",
+                      borderRadius: "8px", padding: "6px 10px", textAlign: "center", minWidth: "44px",
+                    }}>
                       <div style={{ fontSize: "10px", color: "#94a3b8", marginBottom: "2px" }}>{label}</div>
                       <div style={{ fontSize: "13px", fontWeight: "700", color: "#0ea5e9" }}>{value.toFixed(2)}</div>
                     </div>
@@ -67,23 +69,19 @@ export default function MatchesList({ matches, onAnalyze, analyzingId }) {
             )}
 
             <button
-              onClick={() => onAnalyze(match)}
-              disabled={!!analyzingId}
+              onClick={() => handleAnalyze(match)}
               style={{
-                background: isAnalyzing ? "#f0f9ff" : "#0ea5e9",
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                color: isAnalyzing ? "#0ea5e9" : "#ffffff",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: analyzingId ? "not-allowed" : "pointer",
-                flexShrink: 0,
-                transition: "all 0.2s",
-                fontFamily: "inherit",
+                background: "#0ea5e9",
+                border: "none", borderRadius: "8px",
+                padding: "10px 22px", color: "#ffffff",
+                fontSize: "13px", fontWeight: "600",
+                cursor: "pointer", flexShrink: 0,
+                fontFamily: "inherit", transition: "background 0.2s",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#0284c7")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#0ea5e9")}
             >
-              {isAnalyzing ? "Анализирую..." : "Анализировать"}
+              Анализировать →
             </button>
           </div>
         );
