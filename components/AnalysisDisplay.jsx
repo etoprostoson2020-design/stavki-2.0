@@ -59,18 +59,18 @@ const mdComponents = {
     <blockquote style={{ borderLeft: "3px solid #0ea5e9", paddingLeft: "14px", margin: "10px 0", color: "#475569" }}>{children}</blockquote>
   ),
   table: ({ children }) => (
-    <div style={{ overflowX: "auto", marginBottom: "14px" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>{children}</table>
+    <div style={{ overflowX: "auto", marginBottom: "20px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", minWidth: "500px" }}>{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead>{children}</thead>,
   tbody: ({ children }) => <tbody>{children}</tbody>,
   tr: ({ children }) => <tr>{children}</tr>,
   th: ({ children }) => (
-    <th style={{ border: "1px solid #e2e8f0", padding: "8px 12px", background: "#f0f9ff", color: "#0ea5e9", fontSize: "11px", letterSpacing: "0.5px", textTransform: "uppercase", fontWeight: "700", textAlign: "left" }}>{children}</th>
+    <th style={{ border: "1px solid #e2e8f0", padding: "10px 14px", background: "#f0f9ff", color: "#0ea5e9", fontSize: "12px", fontWeight: "700", textAlign: "left", whiteSpace: "nowrap" }}>{children}</th>
   ),
   td: ({ children }) => (
-    <td style={{ border: "1px solid #e2e8f0", padding: "8px 12px", color: "#334155" }}>{children}</td>
+    <td style={{ border: "1px solid #e2e8f0", padding: "10px 14px", color: "#334155", verticalAlign: "middle", whiteSpace: "normal", wordBreak: "break-word" }}>{children}</td>
   ),
   pre: ({ children }) => (
     <pre style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "14px", overflowX: "auto", margin: "10px 0" }}>{children}</pre>
