@@ -24,64 +24,62 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0e1a", color: "#e8eaf0", fontFamily: "'DM Mono','Courier New',monospace" }}>
+    <div style={{ minHeight: "100vh", background: "#f0f4f8", fontFamily: "'Inter','Segoe UI',sans-serif", color: "#0f172a" }}>
       <header style={{
-        background: "linear-gradient(135deg,#0d1b2a 0%,#1a0a2e 50%,#0d1b2a 100%)",
-        borderBottom: "1px solid #1e3a5f",
-        padding: "28px 24px",
+        background: "linear-gradient(135deg,#0f172a 0%,#1e1040 50%,#0f172a 100%)",
+        padding: "24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
       }}>
-        <div style={{ maxWidth: "860px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "10px", letterSpacing: "3px", color: "#00c8ff", textTransform: "uppercase", marginBottom: "6px" }}>
-              Saved Analysis
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "11px", letterSpacing: "3px", color: "#38bdf8", textTransform: "uppercase", marginBottom: "4px" }}>
+            Сохранённый анализ
+          </div>
+          {data && (
+            <h1 style={{ margin: 0, fontSize: "clamp(14px,3vw,22px)", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {data.homeTeam} — {data.awayTeam}
+            </h1>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+          <Link href="/history" style={{ textDecoration: "none" }}>
+            <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", padding: "8px 14px", fontSize: "13px", color: "#94a3b8" }}>
+              ← История
             </div>
-            {data && (
-              <h1 style={{ margin: 0, fontSize: "clamp(14px,3vw,22px)", fontWeight: "800", fontFamily: "'Arial Black',Impact,sans-serif", color: "#e8eaf0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {data.homeTeam} vs {data.awayTeam}
-              </h1>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-            <Link href="/history" style={{ textDecoration: "none" }}>
-              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "8px 14px", fontSize: "11px", letterSpacing: "1px", color: "#4a6a8a", textTransform: "uppercase", cursor: "pointer" }}>
-                ← History
-              </div>
-            </Link>
-            <button
-              onClick={handleDelete}
-              style={{ background: "transparent", border: "1px solid rgba(255,60,60,0.25)", borderRadius: "6px", padding: "8px 14px", fontSize: "11px", letterSpacing: "1px", color: "rgba(255,60,60,0.6)", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Delete
-            </button>
-          </div>
+          </Link>
+          <button
+            onClick={handleDelete}
+            style={{ background: "transparent", border: "1px solid rgba(248,113,113,0.4)", borderRadius: "8px", padding: "8px 14px", fontSize: "13px", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Удалить
+          </button>
         </div>
       </header>
 
-      <main style={{ maxWidth: "860px", margin: "0 auto", padding: "32px 16px" }}>
+      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "32px 16px" }}>
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#2a4a5a", fontSize: "12px", letterSpacing: "2px", textTransform: "uppercase" }}>
-            Loading...
-          </div>
+          <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8", fontSize: "14px" }}>Загрузка...</div>
         ) : data ? (
           <>
-            <div style={{ display: "flex", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
               {[
-                { label: "League", value: data.league },
-                { label: "Match date", value: data.matchDate },
-                { label: "Saved", value: new Date(data.createdAt).toLocaleString("en-GB") },
+                { label: "Лига", value: data.league },
+                { label: "Дата матча", value: data.matchDate },
+                { label: "Сохранено", value: new Date(data.createdAt).toLocaleString("ru-RU") },
               ].map((m, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "6px", padding: "8px 14px" }}>
-                  <div style={{ fontSize: "9px", letterSpacing: "2px", color: "#2a4a5a", textTransform: "uppercase", marginBottom: "3px" }}>{m.label}</div>
-                  <div style={{ fontSize: "12px", color: "#8fa8bf" }}>{m.value}</div>
+                <div key={i} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "8px 14px", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+                  <div style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>{m.label}</div>
+                  <div style={{ fontSize: "13px", color: "#0f172a", fontWeight: "600" }}>{m.value}</div>
                 </div>
               ))}
             </div>
             <AnalysisDisplay text={data.result} loading={false} />
           </>
         ) : (
-          <div style={{ textAlign: "center", padding: "40px", color: "#2a4a5a" }}>Analysis not found.</div>
+          <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>Анализ не найден.</div>
         )}
       </main>
+
+      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
     </div>
   );
 }

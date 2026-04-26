@@ -7,86 +7,51 @@ export default function HistoryList({ items, onDelete }) {
 
   if (!items.length) {
     return (
-      <div style={{ textAlign: "center", padding: "40px", color: "#2a4a5a" }}>
-        <div style={{ fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase" }}>No analyses yet</div>
+      <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
+        <div style={{ fontSize: "14px" }}>Анализов пока нет</div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
       {items.map((item) => (
         <div
           key={item.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: "8px",
-            padding: "14px 16px",
-            cursor: "pointer",
-            transition: "border-color 0.2s",
-          }}
           onClick={() => router.push(`/history/${item.id}`)}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(0,200,255,0.25)")}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
+          style={{
+            background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px",
+            padding: "16px 20px", display: "flex", alignItems: "center", gap: "16px",
+            cursor: "pointer", transition: "box-shadow 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            flexWrap: "wrap",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)")}
+          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)")}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "13px", color: "#c8daea", fontWeight: "600", marginBottom: "3px" }}>
-              {item.homeTeam} vs {item.awayTeam}
+            <div style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", marginBottom: "4px" }}>
+              {item.homeTeam} — {item.awayTeam}
             </div>
-            <div style={{ fontSize: "11px", color: "#4a6a8a", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", gap: "12px", flexWrap: "wrap" }}>
               <span>{item.league}</span>
-              <span>{formatDate(item.matchDate)}</span>
-              <span style={{ color: "#2a4a5a" }}>Saved: {formatCreated(item.createdAt)}</span>
+              <span>{item.matchDate}</span>
+              <span>Сохранено: {new Date(item.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" })}</span>
             </div>
           </div>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(item.id);
-            }}
+            onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
             style={{
-              background: "transparent",
-              border: "1px solid rgba(255,80,80,0.2)",
-              borderRadius: "5px",
-              padding: "5px 10px",
-              color: "rgba(255,80,80,0.5)",
-              fontSize: "11px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              flexShrink: 0,
-              transition: "all 0.2s",
+              background: "transparent", border: "1px solid #fecaca", borderRadius: "8px",
+              padding: "6px 12px", color: "#f87171", fontSize: "12px",
+              cursor: "pointer", fontFamily: "inherit", flexShrink: 0, transition: "all 0.2s",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,80,80,0.6)";
-              e.currentTarget.style.color = "rgba(255,80,80,0.9)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,80,80,0.2)";
-              e.currentTarget.style.color = "rgba(255,80,80,0.5)";
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#fef2f2"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
-            Delete
+            Удалить
           </button>
         </div>
       ))}
     </div>
   );
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function formatCreated(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
 }
