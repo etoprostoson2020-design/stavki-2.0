@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import MatchesList from "@/components/MatchesList";
 
@@ -22,13 +22,24 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchMatches = async () => {
+  // Восстанавливаем состояние при возврате назад
+  useEffect(() => {
+    const savedSport = sessionStorage.getItem("lastSport");
+    const savedMatches = sessionStorage.getItem("lastMatches");
+    if (savedSport) setSport(savedSport);
+    if (savedMatches) {
+      try { setMatches(JSON.parse(savedMatches)); } catch {}
+    }
+  }, []);
+
+  const fetchMatches = async (sportKey) => {
+    const key = sportKey || sport;
     setLoading(true);
     setError(null);
     setMatches(null);
 
     try {
-      const res = await fetch(`/api/matches?sport=${sport}`);
+      const res = await fetch(`/api/matches?sport=${key}`);
       const data = await res.json();
       if (data.error) {
         setError(data.error);
@@ -36,12 +47,22 @@ export default function Home() {
         setError("Нет предстоящих матчей в ближайшие 7 дней");
       } else {
         setMatches(data);
+        // Сохраняем чтобы вернуться к той же лиге
+        sessionStorage.setItem("lastSport", key);
+        sessionStorage.setItem("lastMatches", JSON.stringify(data));
       }
     } catch {
       setError("Ошибка при загрузке матчей");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLeagueChange = (e) => {
+    setSport(e.target.value);
+    setMatches(null);
+    setError(null);
+    sessionStorage.removeItem("lastMatches");
   };
 
   const currentLeague = LEAGUES.find((l) => l.sport === sport);
@@ -79,7 +100,7 @@ export default function Home() {
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <select
               value={sport}
-              onChange={(e) => { setSport(e.target.value); setMatches(null); setError(null); }}
+              onChange={handleLeagueChange}
               style={{
                 flex: 1, minWidth: "220px",
                 background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px",
@@ -92,7 +113,7 @@ export default function Home() {
               ))}
             </select>
             <button
-              onClick={fetchMatches}
+              onClick={() => fetchMatches()}
               disabled={loading}
               style={{
                 background: loading ? "#e2e8f0" : "#0ea5e9",
@@ -129,10 +150,10 @@ export default function Home() {
         {!matches && !loading && !error && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: "12px" }}>
             {[
-              { icon: "📊", label: "Живые коэффициенты", desc: "Bet365, Pinnacle и другие через The Odds API" },
-              { icon: "🔍", label: "Веб-поиск", desc: "Форма команд, травмы, новости через Tavily" },
-              { icon: "💹", label: "Value Bets", desc: "Поиск перекосов между реальной и котируемой вероятностью" },
-              { icon: "🗄️", label: "История", desc: "Все анализы сохраняются автоматически" },
+              { icon: "🎯", label: "Точный счёт", desc: "Анализ наиболее вероятных счётов матча" },
+              { icon: "🔀", label: "Вилки", desc: "Покрытие 2–3 исходов одновременно" },
+              { icon: "⏱️", label: "Тайм/Матч", desc: "Комбо результатов первого тайма и матча" },
+              { icon: "📊", label: "Живые коэффициенты", desc: "Bet365, Pinnacle и другие букмекеры" },
             ].map((c, i) => (
               <div key={i} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
                 <div style={{ fontSize: "22px", marginBottom: "8px" }}>{c.icon}</div>

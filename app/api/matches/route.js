@@ -11,7 +11,7 @@ export async function GET(request) {
 
   try {
     const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${apiKey}&regions=eu,uk&markets=h2h,totals&oddsFormat=decimal`,
+      `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${apiKey}&regions=eu,uk&markets=h2h,spreads,btts&oddsFormat=decimal`,
       { next: { revalidate: 300 } }
     );
 

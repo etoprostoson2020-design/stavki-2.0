@@ -95,11 +95,12 @@ export default function AnalysisPage() {
       }}>
         <div style={{ maxWidth: "900px", margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", padding: "7px 14px", fontSize: "13px", color: "#94a3b8" }}>
-                ← Назад
-              </div>
-            </Link>
+            <button
+              onClick={() => router.back()}
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", padding: "7px 14px", fontSize: "13px", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              ← Назад
+            </button>
             {savedId && (
               <Link href={`/history/${savedId}`} style={{ textDecoration: "none", fontSize: "12px", color: "#38bdf8" }}>
                 Сохранено в историю ↗
