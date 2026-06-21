@@ -12,6 +12,7 @@ const LEAGUES = [
   { sport: "soccer_france_ligue_one", label: "Лига 1 (Франция)" },
   { sport: "soccer_uefa_champs_league", label: "Лига чемпионов УЕФА" },
   { sport: "soccer_uefa_europa_league", label: "Лига Европы УЕФА" },
+  { sport: "soccer_fifa_world_cup", label: "Чемпионат мира 2026" },
   { sport: "basketball_nba", label: "НБА" },
   { sport: "icehockey_nhl", label: "НХЛ" },
 ];
