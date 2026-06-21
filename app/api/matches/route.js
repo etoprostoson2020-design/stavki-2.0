@@ -10,17 +10,34 @@ export async function GET(request) {
   }
 
   try {
-    const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${apiKey}&regions=eu,uk&markets=h2h,spreads,btts&oddsFormat=decimal`,
-      { next: { revalidate: 300 } }
-    );
+    let markets = ["h2h", "spreads", "btts"];
+    let data;
 
-    if (!res.ok) {
+    // Не все турниры поддерживают все рынки (например, btts недоступен для ЧМ-2026) —
+    // если API отвергает рынок, убираем его из списка и пробуем снова.
+    while (true) {
+      const res = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${apiKey}&regions=eu,uk&markets=${markets.join(",")}&oddsFormat=decimal`,
+        { next: { revalidate: 300 } }
+      );
+
+      if (res.ok) {
+        data = await res.json();
+        break;
+      }
+
       const text = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+
+      if (parsed?.error_code === "INVALID_MARKET" && markets.length > 1) {
+        const unsupported = markets.filter((m) => parsed.message.includes(m));
+        markets = markets.filter((m) => !unsupported.includes(m));
+        continue;
+      }
+
       return NextResponse.json({ error: `Ошибка Odds API: ${text}` }, { status: 502 });
     }
-
-    const data = await res.json();
 
     const now = new Date();
     const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
