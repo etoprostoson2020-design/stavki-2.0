@@ -48,6 +48,11 @@ def main():
     print(f"  candidates cleared by development: {TRACK_A_CLEARED or 'NONE'}")
     print("  -> validation opens nothing on this track; certified set is EMPTY.\n")
 
+    print("DISCLOSURE: validation was already opened once earlier in this study, on a")
+    print("  proxy price mirror. That mirror's 'Bet365' column has since been shown to be")
+    print("  identical to the market-average price used here, so C2's validation result at")
+    print("  the PRIMARY price is information already seen and is NOT a fresh test. What is")
+    print("  genuinely new below is the CLOSING-price evidence, which did not exist before.\n")
     print("TRACK B -- user-directed exception, NOT CERTIFIED")
     print(f"  candidates: {TRACK_B_CLEARED}")
     print("  reason: C2 failed only G10's absolute 15u drawdown cap (15.66u) while")
@@ -71,8 +76,27 @@ def main():
             "wins": s.get("wins"), "losses": s.get("losses"),
         })
     r = pd.DataFrame(rows)
-    print("--- validation results (UNCERTIFIED TRACK) ---")
+    print("--- validation results (UNCERTIFIED TRACK), primary price ---")
     print(r.round(4).to_string(index=False))
+
+    print("\n--- the same candidates across every price set available on validation ---")
+    rr = []
+    for name in TRACK_B_CLEARED:
+        row = {"candidate": name}
+        for pn, v in (detail[name].get("price_robustness") or {}).items():
+            row[pn] = v["roi"]
+        rr.append(row)
+    print(pd.DataFrame(rr).round(4).to_string(index=False))
+
+    print("\n--- blind league-wide UNDER 2.5 on validation, by price set ---")
+    br = []
+    for pn, pmap in BT.PRICE_MAPS.items():
+        lb = BT.run(val, CA.c1_league_blind_under, price_map=pmap, candidate_id="blind")
+        sb = BT.summarise(lb)
+        if sb["bets"] >= 40:
+            br.append({"price_set": pn, "bets": sb["bets"],
+                       "roi_UNDER": round(sb["roi"], 4), "pnl": round(sb["pnl"], 2)})
+    print(pd.DataFrame(br).to_string(index=False))
 
     # the structural question, independent of any strategy: is the market's
     # over-prediction of pC still present in the validation seasons?
@@ -82,8 +106,8 @@ def main():
         "n": len(g), "pC": g["is_C"].mean(), "mkt_pC": g["mkt_pC"].mean(),
         "bias": g["mkt_pC"].mean() - g["is_C"].mean(),
         "pB": g["is_B"].mean(), "pA": g["is_A"].mean(),
-        "roi_blind_U25": S.settle("UNDER_2.5", g["U25_B365"].values, g["state"].values).mean(),
-        "roi_blind_O25": S.settle("OVER_2.5", g["O25_B365"].values, g["state"].values).mean(),
+        "roi_blind_U25": S.settle("UNDER_2.5", g["U25_PRI"].values, g["state"].values).mean(),
+        "roi_blind_O25": S.settle("OVER_2.5", g["O25_PRI"].values, g["state"].values).mean(),
     }), include_groups=False)
     print(bys.round(4).to_string())
 

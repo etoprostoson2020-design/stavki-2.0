@@ -135,6 +135,21 @@ def full_summary(d, fn, name) -> dict:
     smax = BT.summarise(lmax)
     s["roi_market_max"] = smax["roi"]
     s["pnl_market_max"] = smax["pnl"]
+
+    # Robustness across every price set that exists. Each is scored only on the
+    # matches that price set actually quotes, so the samples are not comparable
+    # in size -- they are comparable in sign.
+    rob = {}
+    for pname, pmap in BT.PRICE_MAPS.items():
+        try:
+            lr = BT.run(d, fn, price_map=pmap, candidate_id=name)
+        except Exception:
+            continue
+        sr = BT.summarise(lr)
+        if sr["bets"] >= 40:
+            rob[pname] = {"bets": sr["bets"], "roi": round(sr["roi"], 4),
+                          "pnl": round(sr["pnl"], 2)}
+    s["price_robustness"] = rob
     return s, led
 
 
@@ -143,7 +158,7 @@ def main():
         "frozen_at": "before validation was opened",
         "gates": GATES,
         "price_benchmark": D.PRIMARY_PRICE,
-        "robustness_price": D.ROBUSTNESS_PRICE,
+        "robustness_prices": D.ROBUSTNESS_PRICES,
         "stake": "flat 1 unit",
         "note": "gates may not be weakened after any result is seen",
     })
@@ -188,12 +203,23 @@ def main():
             "streak": s.get("max_losing_streak"),
             "seas_conc": s.get("max_season_share_of_gross_positive"),
             "team_conc": s.get("max_team_share_of_gross_positive"),
+            "roi_close": (s.get("price_robustness", {}).get("pinnacle_closing") or {}).get("roi"),
+            "n_close": (s.get("price_robustness", {}).get("pinnacle_closing") or {}).get("bets"),
             "PASS": gates.get("ALL_PASS"),
         })
 
     res = pd.DataFrame(rows)
     print("=== DEVELOPMENT RESULTS, ALL CANDIDATES ===")
     print(res.round(4).to_string(index=False))
+
+    print("\n=== PRICE-SET ROBUSTNESS (ROI by price set, development) ===")
+    rr = []
+    for name in CA.CANDIDATES:
+        row = {"candidate": name}
+        for pn, v in passports[name]["development"].get("price_robustness", {}).items():
+            row[pn] = v["roi"]
+        rr.append(row)
+    print(pd.DataFrame(rr).round(4).to_string(index=False))
 
     print("\n=== GATE DETAIL ===")
     for name in CA.CANDIDATES:

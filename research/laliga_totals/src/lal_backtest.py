@@ -15,8 +15,20 @@ import pandas as pd
 
 import lal_settlement as S
 
-PRICE_COL = {"OVER_2.5": "O25_B365", "UNDER_2.5": "U25_B365"}
-PRICE_COL_MAX = {"OVER_2.5": "O25_MAX", "UNDER_2.5": "U25_MAX"}
+PRICE_COL = {"OVER_2.5": "O25_PRI", "UNDER_2.5": "U25_PRI"}
+PRICE_COL_MAX = {"OVER_2.5": "O25_ROB", "UNDER_2.5": "U25_ROB"}
+
+# Robustness price maps.  "pinnacle_closing" is the sharp benchmark: an edge
+# that lives on pre-match prices but dies here is a stale-quote artefact.
+PRICE_MAPS = {
+    "market_avg_prematch": PRICE_COL,
+    "market_max_prematch": PRICE_COL_MAX,
+    "bet365_prematch":     {"OVER_2.5": "OV25_B365", "UNDER_2.5": "UN25_B365"},
+    "market_avg_closing":  {"OVER_2.5": "OV25_C", "UNDER_2.5": "UN25_C"},
+    "pinnacle_closing":    {"OVER_2.5": "OV25_PC", "UNDER_2.5": "UN25_PC"},
+    "market_max_closing":  {"OVER_2.5": "OV25_MAXC", "UNDER_2.5": "UN25_MAXC"},
+    "betfair_exchange":    {"OVER_2.5": "OV25_BFE", "UNDER_2.5": "UN25_BFE"},
+}
 
 
 def run(d: pd.DataFrame, decide, price_map=PRICE_COL, haircut=0.0,

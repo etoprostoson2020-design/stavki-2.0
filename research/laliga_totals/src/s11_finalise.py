@@ -24,6 +24,10 @@ def main():
             "explicitly labelled uncertified exception at the user's direction.",
             "On validation_2 it returned ROI -3.60% / PnL -5.79u over 161 bets, "
             "positive in only 1 of 2 seasons, with a 21.75u drawdown. It failed.",
+            "It also failed on validation at EVERY genuine price set: -3.69% at "
+            "Bet365 pre-match, -2.07% at market-average closing and -1.45% at "
+            "Pinnacle closing, so its failure is not an artefact of the price "
+            "benchmark chosen.",
             "No sequential effect survived permutation, placebo and FDR control.",
             "holdout_2 was therefore never opened, as the protocol requires.",
         ],
@@ -92,6 +96,14 @@ def main():
             "Over/Under 2.0 quotes and closing lines) or a new out-of-sample "
             "period, e.g. forward-testing 2026/27 as it is played."
         ),
+        "data_source": "genuine football-data.co.uk SP1 season exports supplied by "
+                       "the user; column scheme drifts 61/64 -> 105 -> 119 -> 131 "
+                       "across the ten seasons and is harmonised in lal_data.py",
+        "price_benchmark": {
+            "primary": "market average pre-match (BbAv>2.5 | Avg>2.5), all 10 seasons",
+            "sharp_robustness": "Pinnacle closing (PC>2.5), 2019/20 onward",
+            "no_2p0_quotes": "2.5 is the only goal line in the entire export",
+        },
         "raw_input_sha256": raw,
         "output_sha256": files,
     }

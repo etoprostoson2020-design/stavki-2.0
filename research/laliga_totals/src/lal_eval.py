@@ -16,7 +16,7 @@ def wilson(k, n, z=1.96):
     return (max(0.0, c - h), min(1.0, c + h))
 
 
-def segment_stats(d: pd.DataFrame, price_over="O25_B365", price_under="U25_B365") -> dict:
+def segment_stats(d: pd.DataFrame, price_over="O25_PRI", price_under="U25_PRI") -> dict:
     """Everything the decision matrix needs for one segment."""
     n = len(d)
     if n == 0:
@@ -91,7 +91,7 @@ def _implied_2p0(pr: pd.DataFrame, po: str, pu: str, pB: float) -> dict:
     }
 
 
-def by_season(d: pd.DataFrame, price_over="O25_B365", price_under="U25_B365") -> pd.DataFrame:
+def by_season(d: pd.DataFrame, price_over="O25_PRI", price_under="U25_PRI") -> pd.DataFrame:
     rows = []
     for s, g in d.groupby("season"):
         pr = g[g[price_over].notna()]

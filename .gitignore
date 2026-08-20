@@ -32,3 +32,5 @@ research/laliga_totals/venv/
 
 __pycache__/
 *.pyc
+
+research/laliga_totals/data/features.parquet

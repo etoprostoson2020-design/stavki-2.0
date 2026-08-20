@@ -114,10 +114,10 @@ def rolling_team_features(m: pd.DataFrame, windows=(6, 10, 20)) -> pd.DataFrame:
 def market_features(m: pd.DataFrame, devig="proportional") -> pd.DataFrame:
     """No-vig market probabilities and the derived market expectations."""
     m = m.copy()
-    ok = m["O25_B365"].notna() & m["U25_B365"].notna()
+    ok = m["O25_PRI"].notna() & m["U25_PRI"].notna()
     pc = np.full(len(m), np.nan)
-    q_o, q_u = S.devig_two_way(m.loc[ok, "O25_B365"].values,
-                               m.loc[ok, "U25_B365"].values, devig)
+    q_o, q_u = S.devig_two_way(m.loc[ok, "O25_PRI"].values,
+                               m.loc[ok, "U25_PRI"].values, devig)
     pc[ok.values] = np.ravel(q_o)
     m["mkt_pC"] = pc                       # market P(G>=3), margin removed
 

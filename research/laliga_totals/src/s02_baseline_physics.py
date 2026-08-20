@@ -143,21 +143,21 @@ def main():
     }
 
     # ---- what the real market charged --------------------------------------
-    print("\n=== THE REAL PRICE OF THE 2.5 LINE (Bet365 pre-match, dev) ===\n")
-    pr = m[m["O25_B365"].notna()].copy()
-    q_o, q_u = S.devig_two_way(pr["O25_B365"].values, pr["U25_B365"].values, "proportional")
+    print("\n=== THE REAL PRICE OF THE 2.5 LINE (market average pre-match, dev) ===\n")
+    pr = m[m["O25_PRI"].notna()].copy()
+    q_o, q_u = S.devig_two_way(pr["O25_PRI"].values, pr["U25_PRI"].values, "proportional")
     pr["mkt_pC"] = q_o
-    pr["ovr"] = 1 / pr["O25_B365"] + 1 / pr["U25_B365"]
+    pr["ovr"] = 1 / pr["O25_PRI"] + 1 / pr["U25_PRI"]
     print(f"  priced matches {len(pr)} / {n}  ({100*len(pr)/n:.1f}%)")
     print(f"  mean overround {pr['ovr'].mean():.4f}  -> mean vig per side "
           f"{100*(pr['ovr'].mean()-1)/2:.2f}%")
     print(f"  mean market pC (de-vigged) = {pr['mkt_pC'].mean():.4f}  vs realised pC = {pC:.4f}")
 
     # naive flat-bet every match on each 2.5 side
-    for mk, col in [("OVER_2.5", "O25_B365"), ("UNDER_2.5", "U25_B365")]:
+    for mk, col in [("OVER_2.5", "O25_PRI"), ("UNDER_2.5", "U25_PRI")]:
         pl = S.settle(mk, pr[col].values, pr["state"].values)
         print(f"  blind {mk:10s} n={len(pl)}  PnL={pl.sum():+8.2f}u  ROI={100*pl.mean():+6.2f}%")
-    for mk, col in [("OVER_2.5", "O25_MAX"), ("UNDER_2.5", "U25_MAX")]:
+    for mk, col in [("OVER_2.5", "O25_ROB"), ("UNDER_2.5", "U25_ROB")]:
         sub = pr[pr[col].notna()]
         pl = S.settle(mk, sub[col].values, sub["state"].values)
         print(f"  blind {mk:10s} n={len(pl)}  PnL={pl.sum():+8.2f}u  ROI={100*pl.mean():+6.2f}%  [MARKET MAX]")
@@ -166,10 +166,10 @@ def main():
         "priced": int(len(pr)), "mean_overround": float(pr["ovr"].mean()),
         "mean_market_pC": float(pr["mkt_pC"].mean()), "realised_pC": float(pC),
         "blind_roi": {
-            "OVER_2.5_B365": float(S.settle("OVER_2.5", pr["O25_B365"].values, pr["state"].values).mean()),
-            "UNDER_2.5_B365": float(S.settle("UNDER_2.5", pr["U25_B365"].values, pr["state"].values).mean()),
-            "OVER_2.5_MAX": float(S.settle("OVER_2.5", pr["O25_MAX"].values, pr["state"].values).mean()),
-            "UNDER_2.5_MAX": float(S.settle("UNDER_2.5", pr["U25_MAX"].values, pr["state"].values).mean()),
+            "OVER_2.5_B365": float(S.settle("OVER_2.5", pr["O25_PRI"].values, pr["state"].values).mean()),
+            "UNDER_2.5_B365": float(S.settle("UNDER_2.5", pr["U25_PRI"].values, pr["state"].values).mean()),
+            "OVER_2.5_MAX": float(S.settle("OVER_2.5", pr["O25_ROB"].values, pr["state"].values).mean()),
+            "UNDER_2.5_MAX": float(S.settle("UNDER_2.5", pr["U25_ROB"].values, pr["state"].values).mean()),
         },
     }
 

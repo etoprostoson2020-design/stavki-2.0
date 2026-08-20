@@ -45,11 +45,11 @@ def row_for(name: str, d: pd.DataFrame, seq_note: str | None = None) -> dict:
                 "why_over_vs_under": "not assessable", "risk": "unquantified"}
     pA, pB, pC = d["is_A"].mean(), d["is_B"].mean(), d["is_C"].mean()
     f = S.fair_odds(pA, pB, pC)
-    pr = d[d["O25_B365"].notna()]
-    o25 = float(pr["O25_B365"].mean()) if len(pr) else np.nan
-    u25 = float(pr["U25_B365"].mean()) if len(pr) else np.nan
-    o25m = float(pr["O25_MAX"].mean()) if len(pr) else np.nan
-    u25m = float(pr["U25_MAX"].mean()) if len(pr) else np.nan
+    pr = d[d["O25_PRI"].notna()]
+    o25 = float(pr["O25_PRI"].mean()) if len(pr) else np.nan
+    u25 = float(pr["U25_PRI"].mean()) if len(pr) else np.nan
+    o25m = float(pr["O25_ROB"].mean()) if len(pr) else np.nan
+    u25m = float(pr["U25_ROB"].mean()) if len(pr) else np.nan
 
     # Realised per-match settlement, NOT EV evaluated at the mean price.
     # Those two differ whenever the price co-varies with the outcome -- and it
@@ -62,10 +62,20 @@ def row_for(name: str, d: pd.DataFrame, seq_note: str | None = None) -> dict:
             return float("nan")
         return float(S.settle(mk, pr[col].values, pr["state"].values).mean())
 
-    ev_o25 = _roi("OVER_2.5", "O25_B365")
-    ev_u25 = _roi("UNDER_2.5", "U25_B365")
-    ev_o25m = _roi("OVER_2.5", "O25_MAX")
-    ev_u25m = _roi("UNDER_2.5", "U25_MAX")
+    ev_o25 = _roi("OVER_2.5", "O25_PRI")
+    ev_u25 = _roi("UNDER_2.5", "U25_PRI")
+    ev_o25m = _roi("OVER_2.5", "O25_ROB")
+    ev_u25m = _roi("UNDER_2.5", "U25_ROB")
+
+    # Closing-price evidence, where it exists (2019/20 onward).
+    prc = d[d["OV25_PC"].notna() & d["UN25_PC"].notna()]
+    if len(prc) >= 40:
+        roi_o_cl = float(S.settle("OVER_2.5", prc["OV25_PC"].values, prc["state"].values).mean())
+        roi_u_cl = float(S.settle("UNDER_2.5", prc["UN25_PC"].values, prc["state"].values).mean())
+        n_cl = len(prc)
+    else:
+        roi_o_cl = roi_u_cl = float("nan")
+        n_cl = len(prc)
 
     # Ranking by IN-SAMPLE EV at the price that actually existed.  These EVs use
     # the segment's own realised frequencies, so they are descriptive only: they
@@ -131,10 +141,13 @@ def row_for(name: str, d: pd.DataFrame, seq_note: str | None = None) -> dict:
         "min_odds_OVER_2.5": round(minp["OVER_2.5"], 3),
         "min_odds_UNDER_2.0": round(minp["UNDER_2.0"], 3),
         "min_odds_UNDER_2.5": round(minp["UNDER_2.5"], 3),
-        "offered_OVER_2.5_B365": round(o25, 3), "offered_UNDER_2.5_B365": round(u25, 3),
-        "offered_OVER_2.5_MAX": round(o25m, 3), "offered_UNDER_2.5_MAX": round(u25m, 3),
-        "ROI_OVER_2.5_at_B365_REALISED": round(ev_o25, 4), "ROI_UNDER_2.5_at_B365_REALISED": round(ev_u25, 4),
-        "ROI_OVER_2.5_at_MAX_REALISED": round(ev_o25m, 4), "ROI_UNDER_2.5_at_MAX_REALISED": round(ev_u25m, 4),
+        "offered_OVER_2.5_PRIMARY": round(o25, 3), "offered_UNDER_2.5_PRIMARY": round(u25, 3),
+        "offered_OVER_2.5_MARKETMAX": round(o25m, 3), "offered_UNDER_2.5_MARKETMAX": round(u25m, 3),
+        "ROI_OVER_2.5_PRIMARY_REALISED": round(ev_o25, 4), "ROI_UNDER_2.5_PRIMARY_REALISED": round(ev_u25, 4),
+        "ROI_OVER_2.5_MARKETMAX_REALISED": round(ev_o25m, 4), "ROI_UNDER_2.5_MARKETMAX_REALISED": round(ev_u25m, 4),
+        "n_closing_priced": n_cl,
+        "ROI_OVER_2.5_PINNACLE_CLOSING": round(roi_o_cl, 4),
+        "ROI_UNDER_2.5_PINNACLE_CLOSING": round(roi_u_cl, 4),
         "win_push_loss_best": f"{float(w):.3f}/{float(p):.3f}/{float(l):.3f}",
         "pA_ci95": f"{cA[0]:.3f}-{cA[1]:.3f}",
         "pB_ci95": f"{cB[0]:.3f}-{cB[1]:.3f}",
@@ -200,10 +213,12 @@ def main():
             "best_market_insample", "second_market",
             "fair_OVER_2.0", "fair_OVER_2.5", "fair_UNDER_2.0", "fair_UNDER_2.5",
             "min_odds_OVER_2.0", "min_odds_OVER_2.5", "min_odds_UNDER_2.0",
-            "min_odds_UNDER_2.5", "offered_OVER_2.5_B365", "offered_UNDER_2.5_B365",
-            "offered_OVER_2.5_MAX", "offered_UNDER_2.5_MAX",
-            "ROI_OVER_2.5_at_B365_REALISED", "ROI_UNDER_2.5_at_B365_REALISED",
-            "ROI_OVER_2.5_at_MAX_REALISED", "ROI_UNDER_2.5_at_MAX_REALISED",
+            "min_odds_UNDER_2.5", "offered_OVER_2.5_PRIMARY", "offered_UNDER_2.5_PRIMARY",
+            "offered_OVER_2.5_MARKETMAX", "offered_UNDER_2.5_MARKETMAX",
+            "ROI_OVER_2.5_PRIMARY_REALISED", "ROI_UNDER_2.5_PRIMARY_REALISED",
+            "ROI_OVER_2.5_MARKETMAX_REALISED", "ROI_UNDER_2.5_MARKETMAX_REALISED",
+            "n_closing_priced", "ROI_OVER_2.5_PINNACLE_CLOSING",
+            "ROI_UNDER_2.5_PINNACLE_CLOSING",
             "win_push_loss_best", "season_stability", "conditional_rule",
             "evidence", "why_20_vs_25", "why_over_vs_under", "risk", "action"]
     mx = mx.reindex(columns=cols)
@@ -211,8 +226,8 @@ def main():
     print("=== FINAL DECISION MATRIX (compact view) ===")
     show = ["segment", "n", "pA", "pB", "pC", "best_market_insample",
             "min_odds_OVER_2.0", "min_odds_OVER_2.5", "min_odds_UNDER_2.0",
-            "min_odds_UNDER_2.5", "ROI_OVER_2.5_at_B365_REALISED",
-            "ROI_UNDER_2.5_at_B365_REALISED", "action"]
+            "min_odds_UNDER_2.5", "ROI_OVER_2.5_PRIMARY_REALISED",
+            "ROI_UNDER_2.5_PRIMARY_REALISED", "ROI_UNDER_2.5_PINNACLE_CLOSING", "action"]
     print(mx[show].to_string(index=False))
 
     mx.to_json(D.OUT / "totals_verdict_matrix.json", orient="records", indent=2)

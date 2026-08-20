@@ -1,12 +1,13 @@
-"""Stage 1 -- file registry and data audit.
+"""Stage 1 -- file registry, data audit and price-coverage audit.
 
-Runs over ALL seasons deliberately, but reports only structural facts
-(row counts, field coverage, price coverage, margins, schema drift).
-No outcome frequency, no profitability: those stay locked to development.
+Runs over all seasons but reports only structural facts: row counts, field
+coverage, price coverage, margins, schema drift.  No outcome frequency and no
+profitability -- those stay locked to development.
 """
 from __future__ import annotations
-import sys, os
+import sys, os, warnings
 sys.path.insert(0, os.path.dirname(__file__))
+warnings.filterwarnings("ignore")
 
 import numpy as np
 import pandas as pd
@@ -14,124 +15,150 @@ import pandas as pd
 import lal_data as D
 import lal_settlement as S
 
-pd.set_option("display.width", 200)
+pd.set_option("display.width", 250)
+pd.set_option("display.max_columns", 60)
+
+PRICE_SETS = {
+    "market_avg_prematch":  ("OV25", "UN25"),
+    "market_max_prematch":  ("OV25_MAX", "UN25_MAX"),
+    "bet365_prematch":      ("OV25_B365", "UN25_B365"),
+    "market_avg_closing":   ("OV25_C", "UN25_C"),
+    "pinnacle_closing":     ("OV25_PC", "UN25_PC"),
+    "market_max_closing":   ("OV25_MAXC", "UN25_MAXC"),
+    "betfair_exchange":     ("OV25_BFE", "UN25_BFE"),
+}
 
 
 def main():
     reg = D.file_registry()
     m = D.build_master()
-
     audit = {"file_registry": reg, "rows_total": int(len(m))}
 
-    # ---- structural checks -------------------------------------------------
-    per_season = []
+    per = []
     for s in D.ALL_SEASONS:
         d = m[m["season"] == s]
-        teams = pd.unique(pd.concat([d["home"], d["away"]]))
-        per_season.append({
-            "season": s,
-            "block": d["block"].iloc[0],
-            "matches": int(len(d)),
-            "teams": int(len(teams)),
-            "matches_per_team_min": int(pd.concat([d["home"], d["away"]]).value_counts().min()),
-            "matches_per_team_max": int(pd.concat([d["home"], d["away"]]).value_counts().max()),
+        cnt = pd.concat([d["home"], d["away"]]).value_counts()
+        per.append({
+            "season": s, "block": d["block"].iloc[0], "matches": len(d),
+            "teams": int(pd.concat([d["home"], d["away"]]).nunique()),
+            "per_team_min": int(cnt.min()), "per_team_max": int(cnt.max()),
             "date_min": d["date"].min(), "date_max": d["date"].max(),
             "dup_fixtures": int(d.duplicated(["home", "away"]).sum()),
-            "has_kickoff_pct": round(100 * d["has_kickoff"].mean(), 1),
-            "odds_pct": round(100 * d["has_odds"].mean(), 1),
-            "o25_present_pct": round(100 * d["O25_B365"].notna().mean(), 1),
-            "u25_present_pct": round(100 * d["U25_B365"].notna().mean(), 1),
-            "o25max_present_pct": round(100 * d["O25_MAX"].notna().mean(), 1),
-            "ah_present_pct": round(100 * d["ah_line"].notna().mean(), 1),
-            "x1x2_present_pct": round(100 * d["H_B365"].notna().mean(), 1),
-            "ht_goals_missing": int(d["hg_ht"].isna().sum()),
-            "score_conflicts": int(d["score_conflict"].sum()),
+            "kickoff_pct": round(100 * d["has_kickoff"].mean(), 1),
+            "batches": int(d["batch_id"].nunique()),
+            "ht_missing": int(d["hg_ht"].isna().sum()),
+            "raw_cols": int(pd.read_csv(D.RAW / f"{s}.csv", nrows=1,
+                                        encoding="utf-8-sig").shape[1]),
         })
-    ps = pd.DataFrame(per_season)
+    ps = pd.DataFrame(per)
     audit["per_season"] = ps.to_dict("records")
 
-    # ---- integrity assertions ---------------------------------------------
-    checks = {}
-    checks["every_season_has_380"] = bool((ps["matches"] == 380).all())
-    checks["every_season_has_20_teams"] = bool((ps["teams"] == 20).all())
-    checks["every_team_plays_38"] = bool(
-        (ps["matches_per_team_min"] == 38).all() and (ps["matches_per_team_max"] == 38).all())
-    checks["no_duplicate_fixtures"] = bool((ps["dup_fixtures"] == 0).all())
-    checks["no_duplicate_match_ids"] = bool(m["match_id"].duplicated().sum() == 0)
-    checks["no_cross_source_score_conflict"] = bool(m["score_conflict"].sum() == 0)
-    checks["ht_goals_le_ft_goals"] = bool(
-        ((m["hg_ht"] <= m["hg"]) & (m["ag_ht"] <= m["ag"])).all())
-    checks["goals_nonneg_int"] = bool(
-        (m["hg"] >= 0).all() and (m["ag"] >= 0).all()
-        and (m["hg"] % 1 == 0).all() and (m["ag"] % 1 == 0).all())
-    checks["states_partition"] = bool(
-        (m["is_A"] + m["is_B"] + m["is_C"] == 1).all())
-    checks["dates_monotone_within_season"] = bool(all(
-        m[m["season"] == s].sort_values("date")["date"].is_monotonic_increasing
-        for s in D.ALL_SEASONS))
-    checks["split_sizes"] = {b: int((m["block"] == b).sum()) for b in ["dev", "val", "test"]}
+    checks = {
+        "every_season_380": bool((ps["matches"] == 380).all()),
+        "every_season_20_teams": bool((ps["teams"] == 20).all()),
+        "every_team_38": bool((ps["per_team_min"] == 38).all() and (ps["per_team_max"] == 38).all()),
+        "no_dup_fixtures": bool((ps["dup_fixtures"] == 0).all()),
+        "no_dup_match_ids": bool(m["match_id"].duplicated().sum() == 0),
+        "ht_le_ft": bool(((m["hg_ht"] <= m["hg"]) & (m["ag_ht"] <= m["ag"])).all()),
+        "states_partition": bool((m["is_A"] + m["is_B"] + m["is_C"] == 1).all()),
+        "dates_parsed": bool(m["date"].notna().all()),
+        "split_sizes": {b: int((m["block"] == b).sum()) for b in ["dev", "val", "test"]},
+    }
     audit["integrity"] = checks
 
-    # ---- price audit -------------------------------------------------------
-    price = m[m["O25_B365"].notna() & m["U25_B365"].notna()].copy()
-    price["ovr_25"] = 1 / price["O25_B365"] + 1 / price["U25_B365"]
-    price["ovr_25_max"] = np.where(
-        price["O25_MAX"].notna() & price["U25_MAX"].notna(),
-        1 / price["O25_MAX"] + 1 / price["U25_MAX"], np.nan)
-    price["ovr_1x2"] = 1 / price["H_B365"] + 1 / price["D_B365"] + 1 / price["A_B365"]
+    # ---- cross-check against the earlier proxy dataset ---------------------
+    legacy = {}
+    lp = D.LEGACY
+    if (lp / "fd_la-liga_season-1617.csv").exists():
+        frames = []
+        for s in D.ALL_SEASONS:
+            tag = s[:2] + s[3:]
+            f = lp / f"fd_la-liga_season-{tag}.csv"
+            if f.exists():
+                d = pd.read_csv(f)
+                d["season"] = s
+                frames.append(d)
+        old = pd.concat(frames, ignore_index=True)
+        old["date"] = pd.to_datetime(old["Date"])
+        key = ["season", "HomeTeam", "AwayTeam"]
+        old_k = old.set_index([old["season"], old["HomeTeam"], old["AwayTeam"]])
+        new_k = m.set_index([m["season"], m["home"], m["away"]])
+        common = old_k.index.intersection(new_k.index)
+        a = old_k.loc[common]
+        b = new_k.loc[common]
+        legacy = {
+            "matched_fixtures": int(len(common)),
+            "score_disagreements": int(((a["FTHG"].values != b["hg"].values)
+                                        | (a["FTAG"].values != b["ag"].values)).sum()),
+            "ht_disagreements": int(((a["HTHG"].values != b["hg_ht"].values)
+                                     | (a["HTAG"].values != b["ag_ht"].values)).sum()),
+        }
+    audit["cross_check_vs_previous_dataset"] = legacy
 
-    pm = price.groupby("season").agg(
-        n=("O25_B365", "size"),
-        o25_mean=("O25_B365", "mean"), o25_min=("O25_B365", "min"), o25_max=("O25_B365", "max"),
-        u25_mean=("U25_B365", "mean"), u25_min=("U25_B365", "min"), u25_max=("U25_B365", "max"),
-        ovr25_mean=("ovr_25", "mean"), ovr25_p99=("ovr_25", lambda x: x.quantile(0.99)),
-        ovr25max_mean=("ovr_25_max", "mean"),
-        ovr1x2_mean=("ovr_1x2", "mean"),
-    ).round(4).reset_index()
-    audit["price_audit_by_season"] = pm.to_dict("records")
+    # ---- price coverage ----------------------------------------------------
+    cov = []
+    for s in D.ALL_SEASONS:
+        d = m[m["season"] == s]
+        row = {"season": s, "block": d["block"].iloc[0]}
+        for name, (o, u) in PRICE_SETS.items():
+            ok = d[o].notna() & d[u].notna()
+            row[name] = round(100 * ok.mean(), 1)
+        cov.append(row)
+    cv = pd.DataFrame(cov)
+    audit["price_coverage_pct"] = cv.to_dict("records")
 
-    # outliers: implausible margins or prices
-    audit["price_outliers"] = {
-        "overround_25_below_1": int((price["ovr_25"] < 1.0).sum()),
-        "overround_25_above_1.15": int((price["ovr_25"] > 1.15).sum()),
-        "o25_below_1.01": int((price["O25_B365"] < 1.01).sum()),
-        "o25_above_5": int((price["O25_B365"] > 5).sum()),
-        "max_worse_than_b365_over": int((price["O25_MAX"] < price["O25_B365"]).sum()),
-        "max_worse_than_b365_under": int((price["U25_MAX"] < price["U25_B365"]).sum()),
-    }
+    # ---- margin by price set ----------------------------------------------
+    marg = []
+    for name, (o, u) in PRICE_SETS.items():
+        d = m[m[o].notna() & m[u].notna()]
+        if not len(d):
+            continue
+        ovr = 1 / d[o] + 1 / d[u]
+        marg.append({"price_set": name, "n": len(d),
+                     "seasons": d["season"].nunique(),
+                     "mean_over_price": round(d[o].mean(), 4),
+                     "mean_under_price": round(d[u].mean(), 4),
+                     "mean_overround": round(ovr.mean(), 4),
+                     "vig_per_side_pct": round(100 * (ovr.mean() - 1) / 2, 3),
+                     "ovr_below_1": int((ovr < 1).sum()),
+                     "ovr_above_1.15": int((ovr > 1.15).sum())})
+    mg = pd.DataFrame(marg)
+    audit["margin_by_price_set"] = mg.to_dict("records")
 
-    # ---- what is NOT in the data ------------------------------------------
     audit["absent_markets"] = {
-        "over_under_2.0_prices": "ABSENT in every available source",
-        "closing_prices": "ABSENT (mirror carries pre-match B365 only, no B365C)",
-        "opening_prices": "ABSENT",
-        "alternative_total_lines (1.5, 3.5, asian 2.25 ...)": "ABSENT",
-        "shot_xg_lineups_goal_times_referee_weather": "ABSENT",
-        "season_2025_26_prices": "ABSENT (odds mirror ends 2025-05-25)",
+        "over_under_2.0_and_every_alternative_total_line":
+            "ABSENT -- 2.5 is the only goal line in the entire football-data export",
+        "opening_prices": "ABSENT (pre-match and closing only)",
+        "closing_totals_before_2019_20": "ABSENT (Bb* scheme carries no closing total)",
+        "bet365_totals_before_2019_20": "ABSENT",
+        "xg_lineups_goal_times_referee_weather": "ABSENT",
     }
     audit["price_benchmark"] = {
-        "primary": "Bet365 pre-match Over/Under 2.5 (O25_B365 / U25_B365)",
-        "robustness": "market maximum Over/Under 2.5 (O25_MAX / U25_MAX)",
-        "note": "pre-match, NOT closing. Closing prices are systematically "
-                "sharper, so every economic number here is optimistic relative "
-                "to a closing-line benchmark.",
+        "primary": "market average pre-match (BbAv>2.5 | Avg>2.5) -- the only "
+                   "Over/Under 2.5 series that exists in all ten seasons",
+        "robustness": list(PRICE_SETS),
+        "note": "Pinnacle closing (PC>2.5) is the sharp benchmark and exists from "
+                "2019/20; any edge that survives only on pre-match prices and dies "
+                "on the closing line is a stale-price artefact, not an edge.",
     }
 
     D.write_json("totals_data_audit.json", audit)
 
     print("=== FILE REGISTRY ===")
     for r in reg:
-        print(f"  {r['file']:34s} {r['bytes']:>10,}  {r['role']:8s} {r['sha256'][:16]}...")
+        print(f"  {r['file']:12s} {r['bytes']:>9,}  {r['sha256'][:20]}...")
     print("\n=== PER SEASON ===")
     print(ps.to_string(index=False))
     print("\n=== INTEGRITY ===")
     for k, v in checks.items():
-        print(f"  {k:36s} {v}")
-    print("\n=== PRICE AUDIT ===")
-    print(pm.to_string(index=False))
-    print("\n=== PRICE OUTLIERS ===")
-    for k, v in audit["price_outliers"].items():
-        print(f"  {k:34s} {v}")
+        print(f"  {k:26s} {v}")
+    print("\n=== CROSS-CHECK vs PREVIOUS (proxy) DATASET ===")
+    for k, v in legacy.items():
+        print(f"  {k:26s} {v}")
+    print("\n=== PRICE COVERAGE (% of matches with both sides quoted) ===")
+    print(cv.to_string(index=False))
+    print("\n=== MARGIN BY PRICE SET ===")
+    print(mg.to_string(index=False))
 
 
 if __name__ == "__main__":

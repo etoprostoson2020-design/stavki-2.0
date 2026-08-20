@@ -289,20 +289,20 @@ def main():
               f"predicted quintiles = {spread:.4f}")
 
     # economic usefulness: bet the 2.5 side the model likes, at real prices
-    print("\n--- economic usefulness at real Bet365 prices (EV>0 filter, dev walk-forward) ---")
+    print("\n--- economic usefulness at the primary market-average price (EV>0 filter, dev walk-forward) ---")
     econ = []
     for k, p in preds.items():
         pr = truth.copy()
         pr["pA"], pr["pB"], pr["pC"] = p[:, 0], p[:, 1], p[:, 2]
-        ok = pr["O25_B365"].notna()
+        ok = pr["O25_PRI"].notna()
         pr = pr[ok]
         pp = p[ok.values]
-        ev_o = S.ev("OVER_2.5", pr["O25_B365"].values, pp[:, 0], pp[:, 1], pp[:, 2])
-        ev_u = S.ev("UNDER_2.5", pr["U25_B365"].values, pp[:, 0], pp[:, 1], pp[:, 2])
+        ev_o = S.ev("OVER_2.5", pr["O25_PRI"].values, pp[:, 0], pp[:, 1], pp[:, 2])
+        ev_u = S.ev("UNDER_2.5", pr["U25_PRI"].values, pp[:, 0], pp[:, 1], pp[:, 2])
         pick = np.where(ev_o > ev_u, "OVER_2.5", "UNDER_2.5")
         best_ev = np.maximum(ev_o, ev_u)
         take = best_ev > 0.0
-        price = np.where(pick == "OVER_2.5", pr["O25_B365"].values, pr["U25_B365"].values)
+        price = np.where(pick == "OVER_2.5", pr["O25_PRI"].values, pr["U25_PRI"].values)
         pl = np.array([S.settle(pick[i], price[i], np.array([pr["state"].values[i]]))[0]
                        for i in range(len(pr))])
         econ.append({"model": k, "bets": int(take.sum()),

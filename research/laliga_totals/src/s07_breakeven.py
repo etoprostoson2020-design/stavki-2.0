@@ -81,8 +81,8 @@ def main():
     for q, g in dm.groupby("q"):
         a, b, c = g["is_A"].mean(), g["is_B"].mean(), g["is_C"].mean()
         ff = S.fair_odds(a, b, c)
-        o25 = g["O25_B365"].mean()
-        u25 = g["U25_B365"].mean()
+        o25 = g["O25_PRI"].mean()
+        u25 = g["U25_PRI"].mean()
         ov_ind, _ = S.breakeven_2p0_vs_2p5(a, b, c, o25)
         _, un_ind = S.breakeven_2p0_vs_2p5(a, b, c, u25)
         rows.append({
