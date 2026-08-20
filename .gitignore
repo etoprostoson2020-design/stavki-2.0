@@ -25,3 +25,10 @@ yarn-error.log*
 prisma/*.db
 prisma/*.db-journal
 prisma/prisma/
+
+# research working files
+research/laliga_totals/data/features.parquet
+research/laliga_totals/venv/
+
+__pycache__/
+*.pyc
