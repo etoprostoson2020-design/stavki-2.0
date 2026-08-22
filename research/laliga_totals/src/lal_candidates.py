@@ -156,3 +156,99 @@ CANDIDATES = {
         "mechanism": "mean reversion after a hot run of league batches",
         "expected_frequency": "~10% of matches"},
 }
+
+
+# ===================================================================== USER SET
+# Three strategies supplied by the user, transcribed literally.
+# All three read only: half-by-half goals of already-finished matches, and the
+# Over/Under 2.5 prices of the match being bet.  Nothing else.
+
+def u1_after_empty_second_half(r):
+    """S1. The league's last COMPLETED match had no second-half goals,
+    and Under 2.5 on the next match is quoted 1.80-1.89 -> UNDER 2.5.
+
+    Needs a real kickoff time to know which match finished last, so it is
+    defined only from 2019/20 on. Where several matches share the last kickoff
+    the condition must hold for all of them (no order is invented)."""
+    if not getattr(r, "prev_done_known", False):
+        return None, None, "NO_KICKOFF_TIME_SEASON"
+    if not np.isfinite(getattr(r, "prev_done_G2", np.nan)):
+        return None, None, "NO_COMPLETED_PREDECESSOR"
+    if r.prev_done_G2 != 0:
+        return None, None, "PREV_SECOND_HALF_NOT_EMPTY"
+    u = getattr(r, "U25_PRI", np.nan)
+    if not np.isfinite(u):
+        return None, None, "NO_PRICE"
+    if not (1.80 <= u <= 1.89):
+        return None, None, f"U25_OUT_OF_BAND({u:.2f})"
+    return "UNDER_2.5", None, "S1_AFTER_EMPTY_2H"   # band already checked above
+
+
+def u2_split_second_halves(r):
+    """S2. Home's previous match had 2+ second-half goals, away's had none;
+    Over 2.5 is cheaper than Under 2.5; Under 2.5 >= 2.00 -> UNDER 2.5."""
+    if not np.isfinite(getattr(r, "prev_G2_h", np.nan)) or not np.isfinite(getattr(r, "prev_G2_a", np.nan)):
+        return None, None, "NO_PREVIOUS_MATCH"
+    if r.prev_G2_h < 2:
+        return None, None, "HOME_PREV_2H_LT_2"
+    if r.prev_G2_a != 0:
+        return None, None, "AWAY_PREV_2H_NOT_ZERO"
+    o, u = getattr(r, "O25_PRI", np.nan), getattr(r, "U25_PRI", np.nan)
+    if not (np.isfinite(o) and np.isfinite(u)):
+        return None, None, "NO_PRICE"
+    if not o < u:
+        return None, None, "OVER_NOT_CHEAPER"
+    if u < 2.00:
+        return None, None, f"U25_BELOW_2.00({u:.2f})"
+    return "UNDER_2.5", 2.00, "S2_SPLIT_2H"
+
+
+def u3_split_first_halves(r):
+    """S3. Home's previous match had no first-half goals, away's had 2+;
+    Over 2.5 is cheaper than Under 2.5; Over 2.5 >= 1.55 -> OVER 2.5."""
+    if not np.isfinite(getattr(r, "prev_G1_h", np.nan)) or not np.isfinite(getattr(r, "prev_G1_a", np.nan)):
+        return None, None, "NO_PREVIOUS_MATCH"
+    if r.prev_G1_h != 0:
+        return None, None, "HOME_PREV_1H_NOT_ZERO"
+    if r.prev_G1_a < 2:
+        return None, None, "AWAY_PREV_1H_LT_2"
+    o, u = getattr(r, "O25_PRI", np.nan), getattr(r, "U25_PRI", np.nan)
+    if not (np.isfinite(o) and np.isfinite(u)):
+        return None, None, "NO_PRICE"
+    if not o < u:
+        return None, None, "OVER_NOT_CHEAPER"
+    if o < 1.55:
+        return None, None, f"O25_BELOW_1.55({o:.2f})"
+    return "OVER_2.5", 1.55, "S3_SPLIT_1H"
+
+
+def u_combined(r):
+    """The three run together under the user's own rules:
+    at most one bet per match, S2 outranks S3, S1 fills in where neither fires."""
+    for fn in (u2_split_second_halves, u3_split_first_halves, u1_after_empty_second_half):
+        market, minp, reason = fn(r)
+        if market is not None:
+            return market, minp, reason
+    return None, None, "NO_RULE_FIRED"
+
+
+USER_CANDIDATES = {
+    "U1_AFTER_EMPTY_2H_UNDER_2.5": {
+        "fn": u1_after_empty_second_half, "family": "sequential",
+        "mechanism": "the league's last finished match had a goalless second "
+                     "half; bet the next match under, inside a narrow price band",
+        "expected_frequency": "rare; needs a kickoff time and a 1.80-1.89 quote"},
+    "U2_SPLIT_2H_UNDER_2.5": {
+        "fn": u2_split_second_halves, "family": "profile_chemistry",
+        "mechanism": "one side came off a wide-open second half, the other off a "
+                     "shut one; fade the market when it still prices the over short",
+        "expected_frequency": "low"},
+    "U3_SPLIT_1H_OVER_2.5": {
+        "fn": u3_split_first_halves, "family": "profile_chemistry",
+        "mechanism": "mirror image on first halves, backing the over",
+        "expected_frequency": "low"},
+    "U_COMBINED_S1_S2_S3": {
+        "fn": u_combined, "family": "sequential",
+        "mechanism": "all three together under the stated priority rule",
+        "expected_frequency": "sum of the three, deduplicated"},
+}

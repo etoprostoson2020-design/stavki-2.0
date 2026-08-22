@@ -146,7 +146,7 @@ def full_summary(d, fn, name) -> dict:
         except Exception:
             continue
         sr = BT.summarise(lr)
-        if sr["bets"] >= 40:
+        if sr["bets"] >= 12:
             rob[pname] = {"bets": sr["bets"], "roi": round(sr["roi"], 4),
                           "pnl": round(sr["pnl"], 2)}
     s["price_robustness"] = rob

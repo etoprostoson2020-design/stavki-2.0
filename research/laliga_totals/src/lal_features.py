@@ -201,15 +201,72 @@ def sequence_features(m: pd.DataFrame, ks=(1, 2, 3, 5, 10)) -> pd.DataFrame:
     grpA = (prevA != prevA.groupby(tl["team"]).shift(1)).groupby(tl["team"]).cumsum()
     tl["team_A_streak"] = (prevA.groupby([tl["team"], grpA]).cumsum() * prevA).fillna(0)
 
-    cols = ["match_id", "prev_team_state", "prev_team_G", "team_C_streak", "team_A_streak"]
+    # Half-by-half goals of each team's PREVIOUS league match, within the same
+    # season.  Needed by the user-supplied half-pattern strategies.
+    tl["_G1"] = pd.to_numeric(tl["G_ht"], errors="coerce").astype(float)
+    tl["_G2"] = (pd.to_numeric(tl["G"], errors="coerce")
+                 - pd.to_numeric(tl["G_ht"], errors="coerce")).astype(float)
+    g2 = tl.groupby(["team", "season"], sort=False)
+    tl["prev_G1"] = g2["_G1"].shift(1)
+    tl["prev_G2"] = g2["_G2"].shift(1)
+
+    cols = ["match_id", "prev_team_state", "prev_team_G", "team_C_streak",
+            "team_A_streak", "prev_G1", "prev_G2"]
     h = tl[tl["venue"] == "H"][cols].rename(columns={
         "prev_team_state": "prev_state_h", "prev_team_G": "prev_G_h",
-        "team_C_streak": "C_streak_h", "team_A_streak": "A_streak_h"})
+        "team_C_streak": "C_streak_h", "team_A_streak": "A_streak_h",
+        "prev_G1": "prev_G1_h", "prev_G2": "prev_G2_h"})
     a = tl[tl["venue"] == "A"][cols].rename(columns={
         "prev_team_state": "prev_state_a", "prev_team_G": "prev_G_a",
-        "team_C_streak": "C_streak_a", "team_A_streak": "A_streak_a"})
+        "team_C_streak": "C_streak_a", "team_A_streak": "A_streak_a",
+        "prev_G1": "prev_G1_a", "prev_G2": "prev_G2_a"})
     out = out.merge(h, on="match_id", how="left").merge(a, on="match_id", how="left")
     return out
+
+
+MATCH_MINUTES = 105          # 90 + stoppage; a match is "completed" after this
+
+
+def last_completed_features(m: pd.DataFrame) -> pd.DataFrame:
+    """Second-half goals of the league's last COMPLETED match before kickoff.
+
+    A match counts as finished MATCH_MINUTES after its own kickoff.  When
+    several matches tie for "last completed" (identical kickoff), no order
+    exists between them, so the flag is set only if ALL of them satisfy the
+    condition -- deterministic, and never invents an order.
+
+    Seasons without a kickoff time collapse to one timestamp per day, which
+    makes "the last completed match" undefined; ``prev_done_known`` is False
+    there and the strategies that need it must skip those seasons.
+    """
+    m = m.sort_values(["kickoff_dt", "date", "home"], kind="mergesort").reset_index(drop=True)
+    out_g2 = np.full(len(m), np.nan)
+    out_n = np.zeros(len(m), dtype=int)
+    known = np.zeros(len(m), dtype=bool)
+
+    for season, d in m.groupby("season", sort=False):
+        idx = d.index.values
+        ko = d["kickoff_dt"].values.astype("datetime64[m]").astype(np.int64)
+        g2 = (d["G"] - d["G_ht"]).values.astype(float)
+        has_t = d["has_kickoff"].values
+        order = np.argsort(ko, kind="mergesort")
+        ko_s, g2_s, idx_s = ko[order], g2[order], idx[order]
+        for pos in range(len(ko_s)):
+            thresh = ko_s[pos] - MATCH_MINUTES
+            k = np.searchsorted(ko_s, thresh, side="right")
+            if k == 0:
+                continue
+            last_ko = ko_s[k - 1]
+            tied = g2_s[:k][ko_s[:k] == last_ko]
+            i = idx_s[pos]
+            out_n[i] = len(tied)
+            # condition holds only if every tied match had an empty second half
+            out_g2[i] = 0.0 if np.all(tied == 0) else float(np.max(tied))
+            known[i] = bool(has_t[order][pos])
+    m["prev_done_G2"] = out_g2
+    m["prev_done_n"] = out_n
+    m["prev_done_known"] = known
+    return m
 
 
 def build_all(m: pd.DataFrame) -> pd.DataFrame:
@@ -217,4 +274,5 @@ def build_all(m: pd.DataFrame) -> pd.DataFrame:
     m = rolling_team_features(m)
     m = market_features(m)
     m = sequence_features(m)
+    m = last_completed_features(m)
     return m

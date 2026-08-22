@@ -51,13 +51,18 @@ def run(d: pd.DataFrame, decide, price_map=PRICE_COL, haircut=0.0,
             rec["reason"] = "NO_PRICE"
             recs.append(rec)
             continue
-        price = float(price) * (1.0 - haircut)
-        if min_price is not None and price < min_price:
+        quoted = float(price)
+        # The trigger is gated on the price actually QUOTED. A haircut models
+        # worse execution than the quote you saw, so it applies at settlement
+        # only. Applying it before the gate would silently change which matches
+        # a price-band rule selects, and compare two different strategies.
+        if min_price is not None and quoted < min_price:
             rec["decision"] = "NO_BET"
-            rec["reason"] = f"PRICE_BELOW_MIN({price:.3f}<{min_price:.3f})"
-            rec["price"] = price
+            rec["reason"] = f"PRICE_BELOW_MIN({quoted:.3f}<{min_price:.3f})"
+            rec["price"] = quoted
             recs.append(rec)
             continue
+        price = quoted * (1.0 - haircut)
         pnl = float(S.settle(market, np.array([price]), np.array([r.state]))[0])
         rec.update(price=price, stake=1.0, pnl=pnl,
                    result="PUSH" if pnl == 0.0 else ("WIN" if pnl > 0 else "LOSS"))
