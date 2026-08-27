@@ -25,3 +25,8 @@ yarn-error.log*
 prisma/*.db
 prisma/*.db-journal
 prisma/prisma/
+
+# api scout raw output
+tools/api_scout_out/
+__pycache__/
+*.pyc
