@@ -1,0 +1,102 @@
+{
+ "version": "v4.1",
+ "stage": "VALIDATION_OPENED",
+ "frozen": true,
+ "waves_done": [
+  "01 basic goal transitions",
+  "02 HT/FT/2H",
+  "03 streak/reversal",
+  "04 league states",
+  "05 team states",
+  "06 opponent interaction",
+  "07 shots",
+  "08 shots on target",
+  "09 conversion",
+  "10 corners",
+  "11 fouls",
+  "12 yellow",
+  "13 red",
+  "14 cross-domain",
+  "15 multiscale",
+  "16 regimes",
+  "17 ROUND (blocked)",
+  "18 intra-round (blocked)",
+  "19 goal timing (blocked)",
+  "20 ML discovery",
+  "21 distillation",
+  "22 dogon",
+  "23 classic-methods benchmark"
+ ],
+ "stop_rule": "достигнуто насыщение: последние три волны (конъюнкции, ML, классические методы) не дали ни одного содержательно нового устойчивого механизма",
+ "candidates_evaluated": 223861,
+ "strategies_saved": 7,
+ "blocked": [
+  "OFFICIAL_ROUND",
+  "INTRA_ROUND",
+  "GOAL_TIMING",
+  "CARD_TIMING",
+  "REFEREE"
+ ],
+ "next_step": "решение по блоку test принимается отдельно; без явного разрешения 24-25/25-26 не открывать",
+ "holdout_state": {
+  "val": [
+   "22-23",
+   "23-24"
+  ],
+  "test": [
+   "24-25",
+   "25-26"
+  ],
+  "opened": true,
+  "val_opened": true,
+  "test_opened": false,
+  "val_opened_at": "2026-09-06",
+  "val_opened_once": true
+ },
+ "validation": {
+  "opened_at": "2026-09-06",
+  "block": [
+   "22-23",
+   "23-24"
+  ],
+  "matches": 760,
+  "batches": 679,
+  "criterion_file": "laliga_validation/validation_criterion.json",
+  "criterion_sha256": "01a8abc97a656ee730c3077cd5bc2f02b3f9005b0b089200272f5c2de120c417",
+  "criterion_written_before_opening": true,
+  "baseline_source": "блок валидации",
+  "rules_changed": false,
+  "freeze_hashes_verified": "7/7",
+  "confirmed": [
+   "S01",
+   "S03",
+   "S04",
+   "S06"
+  ],
+  "failed": [
+   "S02",
+   "S05",
+   "S07"
+  ],
+  "verdicts": {
+   "S01": "INDEPENDENTLY_CONFIRMED",
+   "S02": "FAILED_VALIDATION",
+   "S03": "INDEPENDENTLY_CONFIRMED",
+   "S04": "INDEPENDENTLY_CONFIRMED",
+   "S05": "FAILED_VALIDATION",
+   "S06": "INDEPENDENTLY_CONFIRMED",
+   "S07": "FAILED_VALIDATION"
+  }
+ },
+ "lab_reproduction": {
+  "matches": 2280,
+  "batches": 1387,
+  "masks": 4283,
+  "candidates": 214150,
+  "search_threshold_abs_z": 5.5,
+  "negative_controls_passed": 0,
+  "leak_test_discrepancies": 0,
+  "source_csv_hashes_match_manifest": "10/10",
+  "blind_dataset_sha256_match": true
+ }
+}

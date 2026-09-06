@@ -85,6 +85,11 @@ for s in S:
     n = int(m.sum()); k = int(y[m].sum())
     base = float(y[ok].mean()); cond = k / n if n else np.nan
     z = (cond - base) / np.sqrt(base * (1 - base) / n) if n else np.nan
+    # freeze.py считает uplift по УЖЕ округлённым до 3 знаков долям
+    # (absolute_uplift = round(round(cond,3) - round(base,3), 3)).
+    # Повторяем ту же арифметику, чтобы лаборатория и валидация сравнивались
+    # одинаково посчитанными величинами.
+    base_r = round(base, 3); cond_r = round(cond, 3)
     lo, hi = wilson(k, n)
 
     per = {}
@@ -96,11 +101,12 @@ for s in S:
                        base=round(float(y[ok & sm].mean()), 3) if (ok & sm).sum() else None)
         per[ss]["uplift"] = (round(per[ss]["cond"] - per[ss]["base"], 3)
                              if ns and per[ss]["base"] is not None else None)
+        per[ss]["base_n"] = int((ok & sm).sum())
 
     order = np.argsort(df.batch.values)
     ch = miss_chains(y[order][m[order]])
 
-    lab_up = float(s["absolute_uplift"]); up = cond - base
+    lab_up = float(s["absolute_uplift"]); up = round(cond_r - base_r, 3)
     c1 = np.sign(up) == np.sign(lab_up)
     c2 = up >= 0.5 * lab_up
     c3 = z >= 2.0
@@ -113,8 +119,8 @@ for s in S:
                      lab_base=s["base_rate"], lab_cond=s["conditional_rate"],
                      lab_uplift=lab_up, lab_rel=s["relative_uplift"], lab_z=s["z"],
                      val_n=n, val_freq=round(n / int(ok.sum()), 3), val_eligible=int(ok.sum()),
-                     val_base=round(base, 3), val_cond=round(cond, 3),
-                     val_uplift=round(up, 3), val_rel=round(cond / base, 2) if base else None,
+                     val_base=base_r, val_cond=cond_r,
+                     val_uplift=up, val_rel=round(cond / base, 2) if base else None,
                      val_z=round(float(z), 2), val_ci95=f"[{lo};{hi}]",
                      per_season=per,
                      longest_miss_chain=int(ch.max()), q95_miss_chain=int(np.quantile(ch, 0.95)),
