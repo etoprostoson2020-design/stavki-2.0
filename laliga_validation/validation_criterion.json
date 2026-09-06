@@ -1,0 +1,56 @@
+{
+  "written_at_step": 4,
+  "written_before_validation_opened": true,
+  "block_under_test": ["22-23", "23-24"],
+  "applies_to": ["S01", "S02", "S03", "S04", "S05", "S06", "S07"],
+  "rules_frozen": "пороги, окна, признаки и таргеты не меняются; подбор параметров на валидации запрещён",
+
+  "baseline_source": "y[eligible].mean() ВНУТРИ блока валидации; лабораторный baseline не используется",
+  "eligibility": "матч учитывается, если признак стратегии не NaN (то есть warmup команды в текущем сезоне выполнен)",
+
+  "sign_convention": {
+    "note": "S03 и S06 объявлены с invert=true: предсказывается ОТРИЦАНИЕ таргета.",
+    "effective_rates": "для invert=true: cond_eff = 1 - cond_raw, base_eff = 1 - base_raw",
+    "z_eff": "z_eff = (cond_eff - base_eff) / sqrt(base_eff*(1-base_eff)/n); тождественно z_eff = -z_raw",
+    "reason": "uplift в strategies_*.json уже посчитан на инвертированной основе, а z — на сырой; критерий применяется к одной и той же (эффективной) основе"
+  },
+
+  "pass_conditions_all_must_hold": [
+    {
+      "id": "C1_sign",
+      "text": "знак absolute_uplift на валидации совпадает с лабораторным",
+      "formal": "sign(uplift_val_eff) == sign(uplift_lab_eff)",
+      "lab_signs_all_positive": true
+    },
+    {
+      "id": "C2_magnitude",
+      "text": "величина uplift на валидации не меньше 50% лабораторной",
+      "formal": "uplift_val_eff >= 0.5 * uplift_lab_eff"
+    },
+    {
+      "id": "C3_z",
+      "text": "z на блоке валидации не меньше 2.0",
+      "formal": "z_val_eff >= 2.0"
+    },
+    {
+      "id": "C4_both_seasons",
+      "text": "знак uplift сохраняется в каждом из двух сезонов блока по отдельности",
+      "formal": "(cond_eff - base_eff) > 0 в 22-23 И в 23-24, где base_eff считается внутри своего сезона по eligible-матчам"
+    }
+  ],
+
+  "verdict_mapping": {
+    "all_four_hold": "INDEPENDENTLY_CONFIRMED",
+    "any_fails": "FAILED_VALIDATION"
+  },
+
+  "explicitly_forbidden_at_step5": [
+    "подбор порогов",
+    "изменение окон",
+    "добавление фильтров",
+    "ввод новых стратегий",
+    "починка провалившейся стратегии под тем же ID",
+    "повторное открытие блока валидации после первого расчёта"
+  ],
+  "test_block_status": "24-25 и 25-26 НЕ ОТКРЫВАЮТСЯ на этом этапе"
+}
