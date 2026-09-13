@@ -211,3 +211,83 @@ class Experiment(Base):
     status: Mapped[str] = mapped_column(String(24), default="COMPLETED")
     result_hash: Mapped[str] = mapped_column(String(32), index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ------------------------------------------------------- Validation (фаза 6)
+class SearchBatchRecord(Base):
+    """Единица учёта множественного тестирования.
+
+    Порог значимости принадлежит батчу: он зависит от числа проверенных
+    гипотез и их взаимной корреляции. Хранится вместе с батчем, а не глобально.
+    """
+    __tablename__ = "search_batches"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    research_question: Mapped[str] = mapped_column(Text)
+    league: Mapped[str] = mapped_column(String(16))
+    seasons: Mapped[list] = mapped_column(JSON)
+    n_candidates: Mapped[int] = mapped_column(Integer)
+    n_negative_controls: Mapped[int] = mapped_column(Integer)
+    dataset_version: Mapped[str] = mapped_column(String(32), index=True)
+    statistical_policy_hash: Mapped[str] = mapped_column(String(32))
+    null_world: Mapped[dict] = mapped_column(JSON)
+    fwer_threshold: Mapped[float] = mapped_column(Float)
+    n_passing: Mapped[int] = mapped_column(Integer)
+    fingerprint: Mapped[str] = mapped_column(String(32), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Strategy(Base):
+    """Отобранная сущность. Не каждый эксперимент получает Strategy ID."""
+    __tablename__ = "strategies"
+    __table_args__ = (UniqueConstraint("strategy_id", "version", name="uq_strategy_version"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strategy_id: Mapped[str] = mapped_column(String(32), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    name: Mapped[str] = mapped_column(String(160))
+    league: Mapped[str] = mapped_column(String(16))
+    target: Mapped[str] = mapped_column(String(64))
+    conditions: Mapped[list] = mapped_column(JSON)
+    feature_versions: Mapped[dict] = mapped_column(JSON)
+
+    #: Заморозка. Хэш критерия хранится наравне с хэшем формулы.
+    formula_hash: Mapped[str] = mapped_column(String(32))
+    strategy_hash: Mapped[str] = mapped_column(String(32), index=True)
+    qualification_policy_hash: Mapped[str] = mapped_column(String(32))
+    statistical_policy_hash: Mapped[str] = mapped_column(String(32))
+    seen_seasons: Mapped[list] = mapped_column(JSON)
+    frozen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+
+    stage: Mapped[str] = mapped_column(String(24), default="CANDIDATE")
+    strategy_class: Mapped[str] = mapped_column(String(24), default="CANDIDATE")
+    action: Mapped[str | None] = mapped_column(String(16))
+    park_kill_reason: Mapped[str | None] = mapped_column(Text)
+    parent_version: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ValidationRun(Base):
+    """Immutable запись одного прогона валидации."""
+    __tablename__ = "validation_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    strategy_id: Mapped[str] = mapped_column(String(32), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    strategy_hash: Mapped[str] = mapped_column(String(32))
+    batch_id: Mapped[str | None] = mapped_column(String(32), index=True)
+
+    engine_version: Mapped[str] = mapped_column(String(48), default="")
+    oos_seasons: Mapped[list] = mapped_column(JSON)
+    #: VALID_OOS или REPLAY_OF_SEEN. Второе не может дать ROBUST.
+    oos_validity: Mapped[str] = mapped_column(String(24))
+    outcome: Mapped[str] = mapped_column(String(16))
+    action: Mapped[str] = mapped_column(String(16))
+    strategy_class: Mapped[str] = mapped_column(String(24))
+    fwer_threshold: Mapped[float | None] = mapped_column(Float)
+    criterion: Mapped[dict] = mapped_column(JSON)
+    discovery: Mapped[dict] = mapped_column(JSON)
+    oos: Mapped[dict] = mapped_column(JSON)
+    robustness: Mapped[dict] = mapped_column(JSON)
+    notes: Mapped[list] = mapped_column(JSON)
+    run_hash: Mapped[str] = mapped_column(String(32), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

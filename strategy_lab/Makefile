@@ -20,3 +20,6 @@ worker:   ## поднять Celery worker
 
 lock:     ## пересобрать лок окружения
 	python -m scripts.write_lock
+
+validate: ## прогнать валидацию (фаза 6)
+	python -m scripts.run_validation

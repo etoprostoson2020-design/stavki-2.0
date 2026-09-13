@@ -7,8 +7,10 @@ from sqlalchemy import func, select, text
 from fsl import logging as fsl_logging
 from fsl.db import session
 from fsl.hashing import environment_lock, environment_lock_hash
-from fsl.models import DataAuditReport, Experiment, Fixture, RawSnapshot, Team
+from fsl.models import (DataAuditReport, Experiment, Fixture, RawSnapshot,
+                        SearchBatchRecord, Strategy, Team, ValidationRun)
 from fsl.research.holdout import remaining
+from fsl.validation.policy import qualification_policy, statistical_policy
 from fsl.settings import get_settings
 
 settings = get_settings()
@@ -78,3 +80,46 @@ def experiments(limit: int = 50):
                  "baseline": round(r.baseline, 4), "hit_rate": round(r.hit_rate, 4),
                  "absolute_uplift": round(r.absolute_uplift, 4), "z": round(r.z, 2),
                  "result_hash": r.result_hash} for r in rows]
+
+
+@app.get("/research/policies")
+def policies():
+    """Хэши политик. Критерий прохода версионируется наравне с формулой."""
+    q, st = qualification_policy(), statistical_policy()
+    return {p.name: {"version": p.version, "hash": p.hash} for p in (q, st)}
+
+
+@app.get("/research/batches")
+def batches(limit: int = 50):
+    with session() as s:
+        rows = s.scalars(select(SearchBatchRecord)
+                         .order_by(SearchBatchRecord.created_at.desc()).limit(limit)).all()
+        return [{"batch_id": r.batch_id, "question": r.research_question,
+                 "candidates": r.n_candidates, "negative_controls": r.n_negative_controls,
+                 "fwer_threshold": r.fwer_threshold, "passing": r.n_passing,
+                 "null_world": r.null_world} for r in rows]
+
+
+@app.get("/strategies")
+def strategies(limit: int = 50):
+    with session() as s:
+        rows = s.scalars(select(Strategy).order_by(Strategy.created_at.desc())
+                         .limit(limit)).all()
+        return [{"strategy_id": r.strategy_id, "version": r.version, "name": r.name,
+                 "stage": r.stage, "class": r.strategy_class, "action": r.action,
+                 "target": r.target, "conditions": r.conditions,
+                 "strategy_hash": r.strategy_hash,
+                 "qualification_policy_hash": r.qualification_policy_hash,
+                 "reason": r.park_kill_reason} for r in rows]
+
+
+@app.get("/research/validation-runs")
+def validation_runs(limit: int = 50):
+    with session() as s:
+        rows = s.scalars(select(ValidationRun).order_by(ValidationRun.created_at.desc())
+                         .limit(limit)).all()
+        return [{"run_id": r.run_id, "strategy_id": r.strategy_id,
+                 "oos_seasons": r.oos_seasons, "oos_validity": r.oos_validity,
+                 "outcome": r.outcome, "action": r.action, "class": r.strategy_class,
+                 "fwer_threshold": r.fwer_threshold, "criterion": r.criterion,
+                 "notes": r.notes} for r in rows]

@@ -1,0 +1,29 @@
+# Statistical Policy. Документ 05: численные пороги выносятся сюда, не в код.
+version: STATISTICAL_POLICY_v0.1
+
+null_world:
+  # Разбор архитектуры, пункт 3. Порог значимости — функция размера и
+  # корреляционной структуры конкретного батча, а не константа.
+  # Замер на реальных масках: 4.17 при 2500 кандидатах против 5.66 при 214150.
+  # Поэтому «периодически» из документов 01 и 04 заменено на «в каждом батче».
+  required_per_batch: true
+  worlds: 300
+  methods: [circular_shift_within_season, full_shuffle_within_season]
+  primary_method: circular_shift_within_season   # сохраняет автокорреляцию таргета
+  fwer_percentile: 95
+  seed: 2024
+
+negative_controls:
+  # Перемешанные копии реальных признаков и чистый шум. Ни один не обязан
+  # пройти порог. Прошедший негативный контроль — отказ батча целиком.
+  permuted_features: 25
+  noise_features: 15
+  max_allowed_passing: 0
+
+confidence:
+  level: 0.95
+  method: wilson
+
+bootstrap:
+  resamples: 2000
+  seed: 11
