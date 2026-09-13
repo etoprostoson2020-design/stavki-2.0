@@ -25,3 +25,9 @@ yarn-error.log*
 prisma/*.db
 prisma/*.db-journal
 prisma/prisma/
+
+# Football Strategy Lab
+strategy_lab/.env
+strategy_lab/storage/
+strategy_lab/**/__pycache__/
+strategy_lab/.pytest_cache/

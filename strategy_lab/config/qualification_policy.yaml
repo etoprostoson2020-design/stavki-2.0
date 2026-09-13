@@ -1,0 +1,26 @@
+# Qualification Policy. Разбор архитектуры, пункт 4: критерий прохода
+# замораживается и хэшируется НАРАВНЕ с формулой, до открытия блока.
+version: QUALIFICATION_POLICY_v0.1
+frozen_before_oos: true
+
+candidate_gate:
+  min_signals: 80
+  min_signal_frequency: 0.02
+  max_top5_team_share: 0.60      # Red Team #4: эффект одной команды
+  min_seasons_with_signals: 3
+
+oos_pass:
+  # Знак, величина и значимость. Все условия обязательны одновременно.
+  sign_must_match_lab: true
+  min_fraction_of_lab_uplift: 0.5
+  min_z: 2.0
+  sign_must_hold_in_every_season: true
+
+statistical:
+  # Разбор архитектуры, пункт 3: порог — функция размера батча, а не константа.
+  # Замер на 214150 кандидатах: 4.17 при 2500 против 5.66 при 214150.
+  fwer_threshold: PER_BATCH_NULL_WORLD
+  null_world_required_per_batch: true
+  null_worlds: 300
+  null_method: circular_shift_within_season
+  confidence_level: 0.95

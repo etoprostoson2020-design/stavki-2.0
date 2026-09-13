@@ -1,0 +1,57 @@
+name: football-strategy-lab
+
+x-app: &app
+  build: .
+  env_file: [.env]
+  environment:
+    FSL_POSTGRES_DSN: postgresql+psycopg://fsl:${POSTGRES_PASSWORD:-fsl_dev}@postgres:5432/fsl
+    FSL_REDIS_URL: redis://redis:6379/0
+    FSL_STORAGE_ROOT: /data
+  volumes:
+    - storage:/data
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fsl
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fsl_dev}
+      POSTGRES_DB: fsl
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fsl -d fsl"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    ports: ["8000:8000"]
+    command: ["uvicorn", "fsl.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "fsl.worker.celery_app.app", "worker", "-l", "info",
+              "-Q", "data,features,experiments,validation"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

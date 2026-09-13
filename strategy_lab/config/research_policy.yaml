@@ -1,0 +1,25 @@
+# Research Policy. Документ 09: критические пороги не хардкодятся.
+version: RESEARCH_POLICY_v0.1
+
+blocks:
+  ESP_1:
+    DISCOVERY: ["16-17", "17-18", "18-19", "19-20", "20-21", "21-22"]
+    VALIDATION: ["22-23", "23-24"]
+    TEST: ["24-25", "25-26"]
+
+holdout:
+  # Разбор архитектуры, пункт 2. Батч не запускается, если после него
+  # неоткрытых сезонов в лиге останется меньше этого числа.
+  min_unseen_after_batch: 2
+  seen_is_irreversible: true
+
+temporal:
+  match_minutes: 115          # длительность матча с перерывом
+  date_only_hour: 12          # условный час, когда источник не даёт время начала
+  boundary: SYNC_BATCH        # граница видимости, не календарное время
+
+features:
+  missing_data_policy: UNAVAILABLE   # никогда не 0
+  season_transition_default: SEASON_RESET
+  require_leakage_test: true         # без чистого регресс-теста статус ACTIVE не выдаётся
+  leakage_test_points: 6
