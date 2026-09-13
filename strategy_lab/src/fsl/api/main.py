@@ -123,3 +123,59 @@ def validation_runs(limit: int = 50):
                  "outcome": r.outcome, "action": r.action, "class": r.strategy_class,
                  "fwer_threshold": r.fwer_threshold, "criterion": r.criterion,
                  "notes": r.notes} for r in rows]
+
+
+# ------------------------------------------------------ Research Memory (фаза 7)
+@app.get("/memory/stats")
+def memory_stats():
+    from fsl.memory import registry as _reg
+    with session() as s:
+        return _reg.registry_stats(s)
+
+
+@app.get("/memory/features")
+def memory_features():
+    """Meta Memory: что каждый признак принёс лаборатории за всю историю."""
+    from fsl.memory import registry as _reg
+    with session() as s:
+        return _reg.meta_summary(s)
+
+
+@app.get("/memory/exhausted")
+def memory_exhausted():
+    from fsl.memory import regions as _rg
+    with session() as s:
+        return _rg.list_exhausted(s)
+
+
+@app.get("/memory/revival")
+def memory_revival():
+    from fsl.memory import lifecycle as _lc
+    with session() as s:
+        return _lc.revival_candidates(s)
+
+
+@app.get("/memory/families")
+def memory_families():
+    from fsl.memory import families as _fam
+    with session() as s:
+        return {"families": _fam.rebuild_families(s),
+                "similarity": _fam.similarity_matrix(s)}
+
+
+@app.get("/memory/failures/{strategy_id}")
+def memory_failures(strategy_id: str):
+    from fsl.memory import lifecycle as _lc
+    with session() as s:
+        return _lc.failure_history(s, strategy_id)
+
+
+@app.get("/memory/ask")
+def memory_ask(feature: str, op: str, threshold: float, target: str):
+    """«Мы это уже проверяли и чем кончилось?» — одним запросом."""
+    from fsl.experiments.engine import Condition
+    from fsl.memory.context import what_do_we_know
+    if op not in (">=", "<="):
+        raise HTTPException(400, "op должен быть >= или <=")
+    with session() as s:
+        return what_do_we_know(s, [Condition(feature, op, threshold)], target)

@@ -23,3 +23,12 @@ features:
   season_transition_default: SEASON_RESET
   require_leakage_test: true         # без чистого регресс-теста статус ACTIVE не выдаётся
   leakage_test_points: 6
+
+memory:
+  # Область считается исчерпанной, если в ней проверено не меньше стольких
+  # порогов и ни один не прошёл порог батча. Меньше — это ещё не поиск.
+  min_hypotheses_to_exhaust: 6
+  # Пересечение сигналов, выше которого стратегии считаются одним механизмом.
+  family_jaccard: 0.50
+  # Пересечение, выше которого гипотеза — near-duplicate и заново не считается.
+  near_duplicate_jaccard: 0.90

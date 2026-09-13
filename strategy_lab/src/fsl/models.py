@@ -291,3 +291,151 @@ class ValidationRun(Base):
     notes: Mapped[list] = mapped_column(JSON)
     run_hash: Mapped[str] = mapped_column(String(32), index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# --------------------------------------------------- Research Memory (фаза 7)
+class HypothesisRecord(Base):
+    """Experiment Registry: практически всё, что проверялось, с отпечатками.
+
+    Не каждая запись получает Strategy ID. Здесь лежит и то, что провалилось, —
+    негативное знание не удаляется никогда.
+    """
+    __tablename__ = "hypothesis_registry"
+    __table_args__ = (UniqueConstraint("exact_fingerprint", name="uq_exact_fingerprint"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hypothesis_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+
+    league: Mapped[str] = mapped_column(String(16), index=True)
+    seasons: Mapped[list] = mapped_column(JSON)
+    target: Mapped[str] = mapped_column(String(64), index=True)
+    conditions: Mapped[list] = mapped_column(JSON)
+    feature_versions: Mapped[dict] = mapped_column(JSON)
+
+    exact_fingerprint: Mapped[str] = mapped_column(String(32), index=True)
+    semantic_fingerprint: Mapped[str] = mapped_column(String(32), index=True)
+    signal_fingerprint: Mapped[str | None] = mapped_column(String(32), index=True)
+    region_key: Mapped[str] = mapped_column(String(160), index=True)
+
+    origin: Mapped[str] = mapped_column(String(32), default="RULE_GENERATOR")
+    batch_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    dataset_version: Mapped[str] = mapped_column(String(32), index=True)
+
+    n_signals: Mapped[int | None] = mapped_column(Integer)
+    baseline: Mapped[float | None] = mapped_column(Float)
+    hit_rate: Mapped[float | None] = mapped_column(Float)
+    absolute_uplift: Mapped[float | None] = mapped_column(Float)
+    z: Mapped[float | None] = mapped_column(Float)
+    passed_batch_threshold: Mapped[bool | None] = mapped_column(Boolean)
+
+    status: Mapped[str] = mapped_column(String(24), default="EVALUATED")
+    strategy_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    times_seen: Mapped[int] = mapped_column(Integer, default=1)
+    first_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    last_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class StrategySignalSet(Base):
+    """Множество сигналов отобранной стратегии — для Jaccard и семейств.
+
+    Хранится только для того, что попало в Strategy Registry: для всех
+    экспериментов это было бы дорого и не нужно (документ 06).
+    """
+    __tablename__ = "strategy_signal_sets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strategy_id: Mapped[str] = mapped_column(String(32), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    dataset_version: Mapped[str] = mapped_column(String(32))
+    fixture_ids: Mapped[list] = mapped_column(JSON)
+    signal_fingerprint: Mapped[str] = mapped_column(String(32), index=True)
+
+
+class StrategyFamily(Base):
+    """Кластер близких механизмов. Коррелированные стратегии — не независимые открытия."""
+    __tablename__ = "strategy_families"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    label: Mapped[str] = mapped_column(String(160))
+    members: Mapped[list] = mapped_column(JSON)
+    max_pairwise_jaccard: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ParkRecord(Base):
+    """PARK: идея жива, но ждёт условия. Ничего не удаляется."""
+    __tablename__ = "park_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strategy_id: Mapped[str] = mapped_column(String(32), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(Text)
+    revival_condition: Mapped[str] = mapped_column(Text)
+    #: Сколько новых матчей должно появиться, прежде чем возвращаться к идее.
+    min_new_fixtures: Mapped[int] = mapped_column(Integer, default=0)
+    #: Снимок объёма данных на момент парковки — база для сравнения.
+    fixtures_at_park: Mapped[int] = mapped_column(Integer, default=0)
+    review_after: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    priority: Mapped[int] = mapped_column(Integer, default=5)
+    revived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class KillRecord(Base):
+    """KILL: ветвь признана бесперспективной. Причина хранится вечно."""
+    __tablename__ = "kill_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strategy_id: Mapped[str] = mapped_column(String(32), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    code: Mapped[str] = mapped_column(String(48))
+    reason: Mapped[str] = mapped_column(Text)
+    evidence: Mapped[dict] = mapped_column(JSON)
+    policy_version: Mapped[str] = mapped_column(String(48))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ExhaustedRegion(Base):
+    """Участок пространства поиска, где уже искали и не нашли.
+
+    Ретест разрешён только при реальном изменении данных, признака, версии,
+    сезона или метода — иначе генератор будет ходить по кругу.
+    """
+    __tablename__ = "exhausted_regions"
+    __table_args__ = (UniqueConstraint("region_key", "dataset_version",
+                                       name="uq_region_dataset"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    region_key: Mapped[str] = mapped_column(String(160), index=True)
+    league: Mapped[str] = mapped_column(String(16))
+    dataset_version: Mapped[str] = mapped_column(String(32))
+    hypotheses_tested: Mapped[int] = mapped_column(Integer)
+    best_abs_z: Mapped[float] = mapped_column(Float)
+    batch_threshold: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MetaFeatureStat(Base):
+    """Meta Memory: что признак приносил лаборатории за всю историю."""
+    __tablename__ = "meta_feature_stats"
+    __table_args__ = (UniqueConstraint("feature_id", "target", name="uq_meta_feature_target"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    feature_id: Mapped[str] = mapped_column(String(64), index=True)
+    target: Mapped[str] = mapped_column(String(64))
+    hypotheses: Mapped[int] = mapped_column(Integer, default=0)
+    passed_threshold: Mapped[int] = mapped_column(Integer, default=0)
+    candidates: Mapped[int] = mapped_column(Integer, default=0)
+    robust: Mapped[int] = mapped_column(Integer, default=0)
+    killed: Mapped[int] = mapped_column(Integer, default=0)
+    parked: Mapped[int] = mapped_column(Integer, default=0)
+    best_abs_z: Mapped[float] = mapped_column(Float, default=0.0)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class DecisionAudit(Base):
+    """Рекомендация машины и решение человека хранятся раздельно."""
+    __tablename__ = "decision_audit"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subject_type: Mapped[str] = mapped_column(String(32))     # STRATEGY / BATCH / REGION
+    subject_id: Mapped[str] = mapped_column(String(48), index=True)
+    machine_recommendation: Mapped[str] = mapped_column(String(32))
+    human_override: Mapped[str | None] = mapped_column(String(32))
+    actor: Mapped[str] = mapped_column(String(64), default="machine")
+    rationale: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

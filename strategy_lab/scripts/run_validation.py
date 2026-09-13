@@ -24,6 +24,7 @@ from fsl.features.compute import compute_features
 from fsl.features.registry import REGISTRY
 from fsl.hashing import stable_hash
 from fsl.models import Fixture, SearchBatchRecord, Strategy, ValidationRun
+from fsl.memory import api as memory
 from fsl.research.holdout import remaining
 from fsl.validation.engine import (HardFail, evaluate_oos, freeze_strategy,
                                    qualification_gate, run_robustness,
@@ -100,6 +101,16 @@ def main() -> dict:
                                kind="NEG_NOISE" if "noise" in name else "NEG_PERMUTED")
                      for name in neg_arrays]
         all_cands = cands + neg_cands
+        # Документ 06: батч начинается с обращения к памяти, а не с расчёта.
+        mem = memory.get_memory_context(
+            s, cands, dataset_version=dsv, feature_versions=fvers,
+            policy_hashes={"qualification": qual.hash, "statistical": stat.hash})
+        print(f"\nMEMORY     в реестре гипотез {mem['registry']['hypotheses']} | "
+              f"из {mem['candidates_in']} кандидатов считать {mem['to_evaluate']}, "
+              f"пропустить {mem['skipped']}")
+        if mem["verdicts"]:
+            print(f"           вердикты памяти: {mem['verdicts']}")
+
         bm = build_matrices(disc, disc_values, all_cands, negative_controls=neg_arrays)
         print(f"\nBATCH      реальных кандидатов {len(cands)} | "
               f"негативных контролей {len(neg_cands)} | всего {len(all_cands)}")
@@ -116,6 +127,8 @@ def main() -> dict:
               f"max|z| реальный {nw.max_abs_z_real}")
         print(f"           НЕГАТИВНЫХ ВЫШЕ ПОРОГА {nw.n_negative_passing} из "
               f"{nw.n_negative_controls} | их max|z| {nw.max_abs_z_negative}")
+        report["memory"] = {k: mem[k] for k in
+                            ("candidates_in", "to_evaluate", "skipped", "verdicts")}
         report["null_world"] = nw.as_dict()
 
         # --- 3. Порог как функция размера батча ------------------------------

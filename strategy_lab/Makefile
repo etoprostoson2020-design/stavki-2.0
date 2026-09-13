@@ -23,3 +23,6 @@ lock:     ## пересобрать лок окружения
 
 validate: ## прогнать валидацию (фаза 6)
 	python -m scripts.run_validation
+
+memory:  ## отчёт исследовательской памяти (фаза 7)
+	python -m scripts.run_memory
