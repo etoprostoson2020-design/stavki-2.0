@@ -179,3 +179,38 @@ def memory_ask(feature: str, op: str, threshold: float, target: str):
         raise HTTPException(400, "op должен быть >= или <=")
     with session() as s:
         return what_do_we_know(s, [Condition(feature, op, threshold)], target)
+
+
+# ------------------------------------------------ Hypothesis Generator (фаза 8)
+@app.get("/research/generation-runs")
+def generation_runs(limit: int = 50):
+    from fsl.models import GenerationRun
+    with session() as s:
+        rows = s.scalars(select(GenerationRun)
+                         .order_by(GenerationRun.created_at.desc()).limit(limit)).all()
+        return [{"batch_key": r.batch_key, "question": r.research_question,
+                 "seed": r.seed, "pool": r.n_pool, "emitted": r.n_emitted,
+                 "skipped": r.n_skipped, "memory_verdicts": r.memory_verdicts,
+                 "budget": r.budget, "mode_mix": r.mode_mix,
+                 "search_policy_hash": r.search_policy_hash} for r in rows]
+
+
+@app.get("/research/lineage/{hypothesis_key:path}")
+def hypothesis_lineage(hypothesis_key: str):
+    """Родословная гипотезы: от корня до текущей мутации."""
+    from fsl.models import HypothesisRecord
+    with session() as s:
+        chain, seen, cur = [], set(), hypothesis_key
+        while cur and cur not in seen:
+            seen.add(cur)
+            rec = s.scalar(select(HypothesisRecord).where(
+                HypothesisRecord.hypothesis_key == cur))
+            if rec is None:
+                break
+            chain.append({"hypothesis_key": rec.hypothesis_key,
+                          "origin": rec.origin, "generation": rec.generation,
+                          "mutation_reason": rec.mutation_reason, "z": rec.z})
+            cur = rec.parent_hypothesis_key
+        if not chain:
+            raise HTTPException(404, "гипотеза не найдена в реестре")
+        return {"lineage": list(reversed(chain))}

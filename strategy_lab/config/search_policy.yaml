@@ -1,0 +1,44 @@
+# Search Policy. Документ 04: пространство поиска всегда ограничено,
+# у каждого батча есть Research Budget.
+version: SEARCH_POLICY_v0.1
+
+grammar:
+  # MVP: преимущественно одно-два условия. Третье — только контролируемой мутацией.
+  max_conditions: 2
+  max_conditions_by_mutation: 3
+  allow_or: false
+  max_complexity: 4
+
+budget:
+  # Бюджет — часть защиты от множественного тестирования, а не оптимизация счёта.
+  max_hypotheses_per_batch: 400
+  max_mutations_per_parent: 6
+  max_generations: 2
+  max_features_per_batch: 8
+  max_targets_per_batch: 6
+
+thresholds:
+  # Сетка грубая. Тонкое соседство разрешено только после многообещающего
+  # кандидата и служит тестом устойчивости, а не скрытой оптимизацией.
+  mode: quantile
+  coarse_grid: [0.05, 0.10, 0.20, 0.30, 0.35, 0.40, 0.60, 0.65, 0.70, 0.80, 0.90, 0.95]
+  fine_neighborhood: [-0.2, -0.1, 0.1, 0.2]
+  fine_requires_promising_parent: true
+  min_signals_to_emit: 60
+
+team_policy:
+  # Разбор архитектуры, пункт 6.2: в документе 04 «team-blind» означало
+  # «не строим правил про конкретный клуб», а в коде v4 тем же словом было
+  # помечено «только состояние лиги». Термины разведены.
+  allow_team_relative: true    # скользящие окна команд — обычные признаки
+  allow_team_specific: false   # правила вида «когда играет конкретный клуб»
+  allow_league_state: true
+
+exploration:
+  # Ни winner-семейства, ни радикальный поиск не получают всё.
+  exploitation_share: 0.70
+  exploration_floor: 0.30
+
+modes: [SYSTEMATIC, MUTATION, EXPLORATION, REVIVAL]
+reproducibility:
+  seed: 20260913

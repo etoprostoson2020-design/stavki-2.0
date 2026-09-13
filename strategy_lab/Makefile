@@ -26,3 +26,6 @@ validate: ## прогнать валидацию (фаза 6)
 
 memory:  ## отчёт исследовательской памяти (фаза 7)
 	python -m scripts.run_memory
+
+generate: ## построить батч гипотез (фаза 8)
+	python -m scripts.run_generator

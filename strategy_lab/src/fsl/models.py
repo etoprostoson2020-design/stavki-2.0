@@ -318,6 +318,15 @@ class HypothesisRecord(Base):
 
     origin: Mapped[str] = mapped_column(String(32), default="RULE_GENERATOR")
     batch_id: Mapped[str | None] = mapped_column(String(32), index=True)
+
+    #: Поля генератора (фаза 8). Родословная мутаций живёт здесь.
+    hypothesis_key: Mapped[str | None] = mapped_column(String(320), index=True)
+    parent_hypothesis_key: Mapped[str | None] = mapped_column(String(320), index=True)
+    htype: Mapped[str | None] = mapped_column(String(24))
+    mode: Mapped[str | None] = mapped_column(String(24))
+    complexity: Mapped[int | None] = mapped_column(Integer)
+    generation: Mapped[int] = mapped_column(Integer, default=0)
+    mutation_reason: Mapped[str | None] = mapped_column(Text)
     dataset_version: Mapped[str] = mapped_column(String(32), index=True)
 
     n_signals: Mapped[int | None] = mapped_column(Integer)
@@ -438,4 +447,23 @@ class DecisionAudit(Base):
     human_override: Mapped[str | None] = mapped_column(String(32))
     actor: Mapped[str] = mapped_column(String(64), default="machine")
     rationale: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class GenerationRun(Base):
+    """Прогон генератора. Воспроизводим по seed при тех же данных и памяти."""
+    __tablename__ = "generation_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_key: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    research_question: Mapped[str] = mapped_column(Text)
+    league: Mapped[str] = mapped_column(String(16))
+    dataset_version: Mapped[str] = mapped_column(String(32), index=True)
+    search_policy_hash: Mapped[str] = mapped_column(String(32))
+    seed: Mapped[int] = mapped_column(Integer)
+    mode_mix: Mapped[dict] = mapped_column(JSON)
+    n_pool: Mapped[int] = mapped_column(Integer)
+    n_emitted: Mapped[int] = mapped_column(Integer)
+    n_skipped: Mapped[int] = mapped_column(Integer)
+    memory_verdicts: Mapped[dict] = mapped_column(JSON)
+    budget: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
